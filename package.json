@@ -4,13 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "vercel-build": "npm install --prefix backend && npm install --prefix frontend && npm --prefix backend run prisma:generate && npm --prefix frontend run build",
+    "vercel-build": "npm install --include=dev --prefix backend && npm install --include=dev --prefix frontend && cd backend && npx prisma generate --schema=prisma/schema.prisma && cd ../frontend && npm run build",
     "build:frontend": "npm --prefix frontend run build",
-    "build:backend": "npm --prefix backend run prisma:generate",
-    "check:prisma": "npm --prefix backend exec prisma validate -- --schema=prisma/schema.prisma",
+    "build:backend": "cd backend && npx prisma generate --schema=prisma/schema.prisma",
+    "check:prisma": "cd backend && npx prisma validate --schema=prisma/schema.prisma",
     "lint:frontend": "npm --prefix frontend run lint"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": "20.x"
   }
 }
