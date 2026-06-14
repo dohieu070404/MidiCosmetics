@@ -1,0 +1,129 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: midi_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-midi_cosmetics}
+      MYSQL_USER: ${MYSQL_USER:-midi_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      TZ: ${TZ:-Asia/Bangkok}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+07:00
+      - --max_connections=200
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --protocol=tcp -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks:
+      - midi_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: midi_backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 8080
+      APP_NAME: ${APP_NAME:-Midi Cosmetics API}
+      API_PREFIX: ${API_PREFIX:-/api/v1}
+      DATABASE_URL: mysql://${MYSQL_USER:-midi_user}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-midi_cosmetics}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-12}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8081}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
+      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-20}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOGGER_PRETTY: ${LOGGER_PRETTY:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      DATABASE_SYNC_STRATEGY: ${DATABASE_SYNC_STRATEGY:-migrate}
+      SEED_DATABASE: ${SEED_DATABASE:-false}
+      AUTO_RESET_FAILED_MIGRATIONS: ${AUTO_RESET_FAILED_MIGRATIONS:-false}
+      ALLOW_ADMIN_SEED: ${ALLOW_ADMIN_SEED:-false}
+      DEV_ADMIN_EMAIL: ${DEV_ADMIN_EMAIL:-admin@midicosmetics.local}
+      DEV_ADMIN_PASSWORD: ${DEV_ADMIN_PASSWORD:-Admin@123456}
+      DEV_ADMIN_FULL_NAME: ${DEV_ADMIN_FULL_NAME:-Midi Admin}
+      ADMIN_ALLOWED_EMAILS: ${ADMIN_ALLOWED_EMAILS:-}
+      ADMIN_BOOTSTRAP_TOKEN: ${ADMIN_BOOTSTRAP_TOKEN:-}
+      ADMIN_BOOTSTRAP_ENABLED: ${ADMIN_BOOTSTRAP_ENABLED:-false}
+      ADMIN_LOGIN_PATH: ${ADMIN_LOGIN_PATH:-/quan-tri-midi-secure-2026}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8081}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL:-}
+      UPLOAD_DRIVER: ${UPLOAD_DRIVER:-local}
+      UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
+      PUBLIC_UPLOAD_BASE_URL: ${PUBLIC_UPLOAD_BASE_URL:-http://localhost:8080/uploads}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      UPLOAD_MAX_FILE_SIZE_MB: ${UPLOAD_MAX_FILE_SIZE_MB:-5}
+      UPLOAD_IMAGE_MAX_FILE_SIZE_MB: ${UPLOAD_IMAGE_MAX_FILE_SIZE_MB:-5}
+      UPLOAD_SPREADSHEET_MAX_FILE_SIZE_MB: ${UPLOAD_SPREADSHEET_MAX_FILE_SIZE_MB:-10}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - backend_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "node", "src/scripts/healthcheck.js"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    networks:
+      - midi_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_APP_NAME: ${VITE_APP_NAME:-Midi Cosmetics}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://localhost:8081}
+        VITE_ENABLE_API_MOCKING: ${VITE_ENABLE_API_MOCKING:-false}
+        VITE_ADMIN_LOGIN_PATH: ${VITE_ADMIN_LOGIN_PATH:-/quan-tri-midi-secure-2026}
+    container_name: midi_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8081}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - midi_network
+
+volumes:
+  mysql_data:
+  backend_uploads:
+
+networks:
+  midi_network:
+    driver: bridge

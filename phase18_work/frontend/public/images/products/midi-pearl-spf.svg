@@ -1,0 +1,31 @@
+<svg width="1200" height="960" viewBox="0 0 1200 960" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Midi Pearl SPF">
+  <defs>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 180) rotate(54) scale(820 620)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.92"/>
+      <stop offset="0.48" stop-color="#FFF9EE" stop-opacity="1"/>
+      <stop offset="1" stop-color="#D6BE99" stop-opacity="0.42"/>
+    </radialGradient>
+    <linearGradient id="bottle" x1="420" y1="160" x2="780" y2="850" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="0.52" stop-color="#FFF9EE"/>
+      <stop offset="1" stop-color="#D6BE99" stop-opacity="0.9"/>
+    </linearGradient>
+    <filter id="shadow" x="230" y="110" width="740" height="850" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="34" stdDeviation="38" flood-color="#6F4E37" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="960" rx="64" fill="url(#glow)"/>
+  <circle cx="936" cy="168" r="132" fill="#fff" opacity="0.25"/>
+  <circle cx="184" cy="794" r="176" fill="#fff" opacity="0.18"/>
+  <g filter="url(#shadow)">
+    <rect x="455" y="168" width="290" height="88" rx="28" fill="#D6BE99"/>
+    <rect x="500" y="110" width="200" height="80" rx="22" fill="#F8F1E8" stroke="#D6BE99" stroke-opacity="0.5" stroke-width="4"/>
+    <rect x="388" y="238" width="424" height="560" rx="86" fill="url(#bottle)" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="6"/>
+    <rect x="448" y="384" width="304" height="226" rx="34" fill="#FFFDF8" fill-opacity="0.65" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="3"/>
+    <text x="600" y="455" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#4F372B" letter-spacing="8">MAISON</text>
+    <text x="600" y="512" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#D6BE99" letter-spacing="10">SPF</text>
+    <text x="600" y="565" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#6F5A4B" letter-spacing="4">Pearl SPF50</text>
+  </g>
+  <path d="M228 250C350 170 430 150 538 132" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.45"/>
+  <path d="M832 780C922 714 986 636 1018 548" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.36"/>
+</svg>
