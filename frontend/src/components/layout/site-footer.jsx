@@ -11,7 +11,7 @@ export function SiteFooter() {
           <div>
             <BrandLogo />
             <p className="mx-auto mt-5 max-w-md text-sm leading-7 text-muted-foreground sm:mx-0">
-              Midi Cosmetics tuyển chọn sản phẩm chăm sóc da, hương thơm và mỹ phẩm theo phong cách thanh lịch, tối giản và dễ ứng dụng hằng ngày.
+              Your beauty, your scent, your confidence
             </p>
           </div>
 
@@ -46,7 +46,7 @@ export function SiteFooter() {
         <Separator className="my-8" />
         <div className="flex flex-col gap-3 text-center text-xs uppercase tracking-[0.18em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:text-left">
           <p>© {new Date().getFullYear()} Midi Cosmetics</p>
-          <p>Mỹ phẩm, chăm sóc da và hương thơm</p>
+          <p>Mỹ phẩm & nước hoa chính hãng</p>
         </div>
       </Container>
     </footer>

@@ -16,11 +16,23 @@ export const ADMIN_NAVIGATION = Object.freeze([
   { label: "Tài khoản", href: ROUTE_PATHS.adminProfile },
 ]);
 
+
 export const SOCIAL_LINKS = Object.freeze([
-  { label: "Facebook", href: "https://facebook.com/midicosmetics" },
-  { label: "Instagram", href: "https://instagram.com/midicosmetics" },
-  { label: "TikTok", href: "https://tiktok.com/@midicosmetics" },
+  {
+    label: "Facebook",
+    href: "https://www.facebook.com/profile.php?id=61580016268412&locale=vi_VN",
+  },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/midicosmetic/",
+  },
 ]);
 
-export const CONTACT_PHONE = Object.freeze({ label: "0900 123 456", href: "tel:0900123456" });
-export const SHOP_ADDRESS = "Địa chỉ shop: đang cập nhật";
+export const CONTACT_PHONE = Object.freeze({
+  label: "0368214676",
+  href: "tel:0368214676",
+});
+
+export const SHOP_ADDRESS = "Bãi Chạo, Mường Động, Phú Thọ";
+
+
