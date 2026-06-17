@@ -242,7 +242,7 @@ export const emailNotificationService = {
   },
 
   sendAdminPasswordChangeVerification(req, admin, verificationToken, expiresAt) {
-    sendTemplateAsync({
+    return sendTemplateToEmail({
       to: admin?.email,
       type: EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGE_VERIFY,
       rows: [

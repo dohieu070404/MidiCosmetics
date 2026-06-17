@@ -46,7 +46,17 @@ export const adminController = {
         entityId: result.admin.uuid,
         metadata: { actorEmail: result.admin.email, expiresAt: result.expiresAt, ttlMinutes: result.ttlMinutes },
       });
-      emailNotificationService.sendAdminPasswordChangeVerification(req, result.admin, result.verificationToken, result.expiresAt);
+      // emailNotificationService.sendAdminPasswordChangeVerification(req, result.admin, result.verificationToken, result.expiresAt);
+      const emailResult = await emailNotificationService.sendAdminPasswordChangeVerification(
+        req,
+        result.admin,
+        result.verificationToken,
+        result.expiresAt
+      );
+
+      if (!emailResult?.ok) {
+        throw new Error('Không gửi được email xác minh đổi mật khẩu. Vui lòng kiểm tra cấu hình SMTP.');
+      }
       return ok(res, 'Vui lòng kiểm tra email để xác minh đổi mật khẩu.', { expiresAt: result.expiresAt });
     } catch (error) {
       await auditService.log(req, {
