@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -237,7 +238,7 @@ model BlogPost {
   title           String     @db.VarChar(255) @map("title")
   slug            String     @unique @db.VarChar(191) @map("slug")
   excerpt         String?    @db.VarChar(500) @map("excerpt")
-  content         String     @db.LongText @map("content")
+  content         String     @db.Text @map("content")
   status          PostStatus @default(DRAFT) @map("status")
   isFeatured      Boolean    @default(false) @map("is_featured")
   featuredOrder   Int        @default(0) @map("featured_order")
@@ -263,7 +264,6 @@ model BlogPost {
   @@index([status, publishedAt], map: "idx_blog_posts_status_published_at")
   @@index([isFeatured, featuredOrder], map: "idx_blog_posts_featured_order")
   @@index([deletedAt], map: "idx_blog_posts_deleted_at")
-  @@fulltext([title, excerpt, content], map: "ft_blog_posts_search")
   @@map("blog_posts")
 }
 
@@ -369,7 +369,7 @@ model Product {
   sku              String?       @unique @db.VarChar(100) @map("sku")
   barcode          String?       @db.VarChar(100) @map("barcode")
   shortDescription String?       @db.VarChar(500) @map("short_description")
-  description      String?       @db.LongText @map("description")
+  description      String?       @db.Text @map("description")
   skinType         String?       @db.VarChar(120) @map("skin_type")
   ingredients      String?       @db.Text @map("ingredients")
   howToUse         String?       @db.Text @map("how_to_use")
@@ -408,7 +408,6 @@ model Product {
   @@index([skinType], map: "idx_products_skin_type")
   @@index([viewCount], map: "idx_products_view_count")
   @@index([deletedAt], map: "idx_products_deleted_at")
-  @@fulltext([name, shortDescription, description], map: "ft_products_search")
   @@map("products")
 }
 

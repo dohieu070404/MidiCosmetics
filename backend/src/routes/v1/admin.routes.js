@@ -21,7 +21,6 @@ import {
   homepageSectionReorderSchema,
   homepageSectionToggleSchema,
   homepageSectionUpdateSchema,
-  importProcessBatchSchema,
   listGenericSchema,
   listProductSchema,
   listSettingsSchema,
@@ -123,8 +122,6 @@ router.get('/imports', requirePermission('imports:read'), validate(listGenericSc
 router.get('/imports/products/template', requirePermission('imports:read'), adminController.downloadProductImportTemplate);
 router.post('/imports/products/preview', requirePermission('imports:create'), uploadRateLimiter, excelUpload.single('file'), validateUploadedXlsxFile, adminController.previewProductImport);
 router.post('/imports/products/:uuid/confirm', requirePermission('imports:create'), validate(uuidOnlySchema), adminController.confirmProductImport);
-router.post('/imports/products/:uuid/process-batch', requirePermission('imports:create'), validate(importProcessBatchSchema), adminController.processProductImportBatch);
-router.post('/imports/products/:uuid/complete', requirePermission('imports:create'), validate(uuidOnlySchema), adminController.completeProductImportJob);
 router.post('/imports/products', requirePermission('imports:create'), uploadRateLimiter, excelUpload.single('file'), validateUploadedXlsxFile, adminController.importProducts);
 
 // Checklist-compatible blog aliases

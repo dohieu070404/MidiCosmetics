@@ -381,21 +381,6 @@ const syncProductImages = async (productId, images, client = prisma) => {
   });
 };
 
-
-const uploadImageBufferToCloudinary = (file) => new Promise((resolve, reject) => {
-  const upload = cloudinary.uploader.upload_stream(
-    {
-      folder: 'midi-cosmetics',
-      resource_type: 'image',
-    },
-    (error, result) => {
-      if (error) return reject(error);
-      return resolve(result);
-    }
-  );
-  upload.end(file.buffer);
-});
-
 const shouldUploadToCloudinary = () => {
   if (env.upload.driver !== 'cloudinary') return false;
   if (!isCloudinaryConfigured()) {
@@ -936,109 +921,6 @@ const upsertProductFromImportRow = async (tx, row) => {
   return { product, operation: existingProduct ? 'UPDATED' : 'CREATED' };
 };
 
-
-const parseProductImportRowsFromJob = async (job) => {
-  const rawRows = (job.rows || [])
-    .slice()
-    .sort((a, b) => a.rowNumber - b.rowNumber)
-    .map((row) => row.rawData || {});
-  return parseKiotRowsFromRaw(rawRows);
-};
-
-const summarizeImportRows = (rows = []) => {
-  const failedStatuses = new Set(['FAILED', 'INVALID', 'DUPLICATE_IN_FILE']);
-  const successRows = rows.filter((row) => row.status === 'SUCCESS').length;
-  const failedRows = rows.filter((row) => failedStatuses.has(row.status)).length;
-  const pendingRows = rows.filter((row) => !['SUCCESS', 'FAILED', 'INVALID', 'DUPLICATE_IN_FILE'].includes(row.status)).length;
-  return { successRows, failedRows, pendingRows };
-};
-
-const processParsedImportRows = async ({ job, parsed, batchSize = Number.POSITIVE_INFINITY }) => {
-  let processedRows = 0;
-  let createdProducts = 0;
-  let updatedProducts = 0;
-  let failedInBatch = 0;
-  let skippedRows = 0;
-  const rowReports = [];
-  const existingRowsByNumber = new Map((job.rows || []).map((row) => [row.rowNumber, row]));
-  const terminalStatuses = new Set(['SUCCESS', 'FAILED', 'INVALID', 'DUPLICATE_IN_FILE']);
-
-  for (const row of parsed.rows) {
-    const existingRow = existingRowsByNumber.get(row.rowNumber);
-    if (terminalStatuses.has(existingRow?.status)) continue;
-
-    if (row.errors.length) {
-      skippedRows += 1;
-      rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'SKIPPED', action: row.action, errors: row.errors, warnings: row.warnings });
-      continue;
-    }
-
-    if (processedRows >= batchSize) break;
-
-    try {
-      const importResult = await prisma.$transaction(async (tx) => {
-        const result = await upsertProductFromImportRow(tx, row);
-        await tx.importRow.update({
-          where: { importJobId_rowNumber: { importJobId: job.id, rowNumber: row.rowNumber } },
-          data: { status: 'SUCCESS', message: 'Imported successfully', warnings: row.warnings, errors: [] },
-        });
-        return result;
-      });
-      if (importResult.operation === 'CREATED') createdProducts += 1;
-      if (importResult.operation === 'UPDATED') updatedProducts += 1;
-      processedRows += 1;
-      rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'SUCCESS', action: row.action, warnings: row.warnings, errors: [] });
-    } catch (error) {
-      failedInBatch += 1;
-      processedRows += 1;
-      const errors = [{ field: null, code: 'IMPORT_FAILED', message: error.message }];
-      await prisma.importRow.update({
-        where: { importJobId_rowNumber: { importJobId: job.id, rowNumber: row.rowNumber } },
-        data: { status: 'FAILED', message: error.message, warnings: row.warnings, errors },
-      }).catch(() => null);
-      rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'FAILED', action: row.action, warnings: row.warnings, errors });
-    }
-  }
-
-  const updatedRows = await prisma.importRow.findMany({
-    where: { importJobId: job.id },
-    orderBy: { rowNumber: 'asc' },
-  });
-  const summary = summarizeImportRows(updatedRows);
-  const remainingRows = parsed.rows.filter((row) => {
-    if (row.errors.length) return false;
-    const current = updatedRows.find((item) => item.rowNumber === row.rowNumber);
-    return !['SUCCESS', 'FAILED', 'INVALID', 'DUPLICATE_IN_FILE'].includes(current?.status);
-  }).length;
-
-  const updatedJob = await prisma.importJob.update({
-    where: { id: job.id },
-    data: {
-      status: remainingRows > 0 ? 'PROCESSING' : 'COMPLETED',
-      totalRows: parsed.totalRows,
-      successRows: summary.successRows,
-      failedRows: summary.failedRows,
-      errorReport: rowReports.filter((row) => row.status === 'FAILED' || row.warnings?.length),
-      completedAt: remainingRows > 0 ? null : new Date(),
-    },
-    include: { createdBy: { select: { uuid: true, fullName: true, email: true } } },
-  });
-
-  return {
-    ...updatedJob,
-    summary: {
-      batchProcessed: processedRows,
-      remainingRows,
-      createdCount: createdProducts,
-      updatedCount: updatedProducts,
-      skippedCount: skippedRows,
-      failedCount: failedInBatch,
-      createdProducts,
-      updatedProducts,
-    },
-  };
-};
-
 const ensureImportDuplicateSafety = async () => true;
 
 export const adminService = {
@@ -1367,12 +1249,10 @@ export const adminService = {
     let media;
 
     if (shouldUploadToCloudinary()) {
-      const result = file.buffer
-        ? await uploadImageBufferToCloudinary(file)
-        : await cloudinary.uploader.upload(file.path, {
-            folder: 'midi-cosmetics',
-            resource_type: 'image',
-          });
+      const result = await cloudinary.uploader.upload(file.path, {
+        folder: 'midi-cosmetics',
+        resource_type: 'image',
+      });
       media = {
         provider: 'CLOUDINARY',
         publicId: result.public_id,
@@ -1380,7 +1260,7 @@ export const adminService = {
         width: result.width,
         height: result.height,
       };
-      if (file.path) await fs.unlink(file.path).catch(() => null);
+      await fs.unlink(file.path).catch(() => null);
     } else {
       media = {
         provider: 'LOCAL',
@@ -1397,7 +1277,7 @@ export const adminService = {
         provider: media.provider,
         publicId: media.publicId,
         originalName: file.originalname,
-        fileName: file.filename || null,
+        fileName: file.filename,
         mimeType: file.mimetype,
         sizeBytes: BigInt(file.size),
         width: media.width,
@@ -1483,77 +1363,90 @@ export const adminService = {
   async confirmProductImport(actor, importJobUuid) {
     const job = await prisma.importJob.findFirst({
       where: { uuid: importJobUuid, deletedAt: null, type: 'PRODUCTS' },
-      include: { rows: { orderBy: { rowNumber: 'asc' } } },
+      include: { rows: true },
     });
     if (!job) throw ApiError.notFound('Import job not found');
-    if (!['PENDING', 'PROCESSING', 'FAILED'].includes(job.status)) {
+    if (!['PENDING', 'FAILED'].includes(job.status)) {
       throw ApiError.badRequest('Import job has already been processed');
     }
 
-    const startedAt = job.startedAt || new Date();
-    await prisma.importJob.update({ where: { id: job.id }, data: { status: 'PROCESSING', startedAt } });
+    const filePath = importFilePathFromJob(job);
+    if (!filePath) throw ApiError.badRequest('Import file path is missing');
+
+    await prisma.importJob.update({ where: { id: job.id }, data: { status: 'PROCESSING', startedAt: new Date() } });
 
     try {
-      const parsed = await parseProductImportRowsFromJob(job);
-      const result = await processParsedImportRows({ job: { ...job, startedAt }, parsed, batchSize: Number.POSITIVE_INFINITY });
-      return result;
+      await fs.access(filePath);
+      const parsed = await parseProductImportFile(filePath);
+      await prisma.$transaction(async (tx) => {
+        await createImportRows(tx, job.id, parsed.rows);
+      });
+
+      let successRows = 0;
+      let failedRows = 0;
+      let skippedRows = 0;
+      let createdProducts = 0;
+      let updatedProducts = 0;
+      const rowReports = [];
+
+      for (const row of parsed.rows) {
+        if (row.errors.length) {
+          failedRows += 1;
+          skippedRows += 1;
+          rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'SKIPPED', action: row.action, errors: row.errors, warnings: row.warnings });
+          continue;
+        }
+
+        try {
+          const importResult = await prisma.$transaction(async (tx) => {
+            const result = await upsertProductFromImportRow(tx, row);
+            await tx.importRow.update({
+              where: { importJobId_rowNumber: { importJobId: job.id, rowNumber: row.rowNumber } },
+              data: { status: 'SUCCESS', message: 'Imported successfully', warnings: row.warnings, errors: [] },
+            });
+            return result;
+          });
+          if (importResult.operation === 'CREATED') createdProducts += 1;
+          if (importResult.operation === 'UPDATED') updatedProducts += 1;
+          successRows += 1;
+          rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'SUCCESS', action: row.action, warnings: row.warnings, errors: [] });
+        } catch (error) {
+          failedRows += 1;
+          const errors = [{ field: null, code: 'IMPORT_FAILED', message: error.message }];
+          await prisma.importRow.update({
+            where: { importJobId_rowNumber: { importJobId: job.id, rowNumber: row.rowNumber } },
+            data: { status: 'FAILED', message: error.message, warnings: row.warnings, errors },
+          }).catch(() => null);
+          rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'FAILED', action: row.action, warnings: row.warnings, errors });
+        }
+      }
+
+      const updatedJob = await prisma.importJob.update({
+        where: { id: job.id },
+        data: {
+          status: 'COMPLETED',
+          totalRows: parsed.totalRows,
+          successRows,
+          failedRows,
+          errorReport: rowReports.filter((row) => row.status === 'FAILED' || row.warnings?.length),
+          completedAt: new Date(),
+        },
+        include: { createdBy: { select: { uuid: true, fullName: true, email: true } } },
+      });
+
+      return { ...updatedJob, summary: { createdCount: createdProducts, updatedCount: updatedProducts, skippedCount: skippedRows, failedCount: failedRows - skippedRows, createdProducts, updatedProducts } };
     } catch (error) {
       return prisma.importJob.update({
         where: { id: job.id },
         data: {
           status: 'FAILED',
           successRows: 0,
-          failedRows: job.totalRows || job.rows?.length || 0,
+          failedRows: job.totalRows || 0,
           errorReport: [{ row: null, code: 'IMPORT_FAILED', message: error.message }],
           completedAt: new Date(),
         },
       });
     }
-  },
-
-  async processProductImportBatch(actor, importJobUuid, body = {}) {
-    const requestedBatchSize = Number(body.batchSize || env.import.batchSize || 100);
-    const batchSize = Math.min(Math.max(Number.isFinite(requestedBatchSize) ? requestedBatchSize : 100, 10), 200);
-    const job = await prisma.importJob.findFirst({
-      where: { uuid: importJobUuid, deletedAt: null, type: 'PRODUCTS' },
-      include: { rows: { orderBy: { rowNumber: 'asc' } } },
-    });
-    if (!job) throw ApiError.notFound('Import job not found');
-    if (job.status === 'COMPLETED') throw ApiError.badRequest('Import job has already been completed');
-    if (!['PENDING', 'PROCESSING', 'FAILED'].includes(job.status)) throw ApiError.badRequest('Import job cannot be processed');
-
-    const startedAt = job.startedAt || new Date();
-    await prisma.importJob.update({ where: { id: job.id }, data: { status: 'PROCESSING', startedAt } });
-    const parsed = await parseProductImportRowsFromJob(job);
-    return processParsedImportRows({ job: { ...job, startedAt }, parsed, batchSize });
-  },
-
-  async completeProductImportJob(actor, importJobUuid) {
-    const job = await prisma.importJob.findFirst({
-      where: { uuid: importJobUuid, deletedAt: null, type: 'PRODUCTS' },
-      include: { rows: { orderBy: { rowNumber: 'asc' } }, createdBy: { select: { uuid: true, fullName: true, email: true } } },
-    });
-    if (!job) throw ApiError.notFound('Import job not found');
-
-    const importablePendingRows = job.rows.filter((row) => !['SUCCESS', 'FAILED', 'INVALID', 'DUPLICATE_IN_FILE'].includes(row.status)).length;
-    if (importablePendingRows > 0) {
-      throw ApiError.badRequest(`Import job còn ${importablePendingRows} dòng chưa xử lý. Vui lòng gọi process-batch trước khi complete.`);
-    }
-
-    const summary = summarizeImportRows(job.rows);
-    const updatedJob = await prisma.importJob.update({
-      where: { id: job.id },
-      data: {
-        status: 'COMPLETED',
-        totalRows: job.totalRows || job.rows.length,
-        successRows: summary.successRows,
-        failedRows: summary.failedRows,
-        completedAt: job.completedAt || new Date(),
-      },
-      include: { createdBy: { select: { uuid: true, fullName: true, email: true } } },
-    });
-
-    return { ...updatedJob, summary: { successRows: summary.successRows, failedRows: summary.failedRows, pendingRows: summary.pendingRows } };
   },
 
   async importProducts(actor, file) {

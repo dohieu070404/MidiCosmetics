@@ -1,42 +1,150 @@
-# Dependencies
-node_modules
-backend/node_modules
-frontend/node_modules
+```gitignore
+# =========================
+# Environment files / Secrets
+# =========================
 
-# Environment files
 .env
 .env.*
 !.env.example
-!.env.production.example
-!.env.docker.example
+!.env.*.example
 
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+
+# Local env files
+.env.local
+.env.development
+.env.production
+.env.test
+.env.docker
+
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.*.example
+
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.*.example
+
+# Vercel local config
+.vercel
+
+# =========================
+# Dependencies
+# =========================
+
+node_modules
+**/node_modules
+
+.pnpm-store
+.yarn
+.yarn/cache
+.yarn/unplugged
+
+# =========================
 # Build outputs
+# =========================
+
 dist
 build
-coverage
+.out
+.next
+.output
+
 frontend/dist
 frontend/build
-backend/coverage
+backend/dist
+backend/build
 
-# Runtime/generated local files
-uploads
-backend/uploads
+# =========================
+# Logs
+# =========================
+
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
-.vercel
-.cache
-.tmp
+lerna-debug.log*
+
+# =========================
+# Runtime / uploads
+# =========================
+
+uploads
+backend/uploads
 tmp
+temp
+.cache
 
-# OS/editor
-.DS_Store
-.vscode/*
-!.vscode/extensions.json
-.idea
+# Uploaded files
+*.tmp
+*.temp
 
-# Local database volumes
-mysql_data
+# =========================
+# Database / local data
+# =========================
+
 *.sqlite
 *.sqlite3
+*.db
+*.dump
+*.sql.gz
+*.backup
+
+# Docker local volumes / data
+docker-data
+data
+postgres_data
+mysql_data
+
+# =========================
+# Prisma
+# =========================
+
+# Do NOT ignore:
+# backend/prisma/schema.prisma
+# backend/prisma/migrations
+
+# Optional local Prisma artifacts
+prisma/dev.db
+backend/prisma/dev.db
+
+# =========================
+# OS / Editor
+# =========================
+
+.DS_Store
+Thumbs.db
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+.idea
+
+# =========================
+# Test / coverage
+# =========================
+
+coverage
+.nyc_output
+
+# =========================
+# Misc
+# =========================
+
+*.tgz
+*.zip
+*.rar
+*.7z
+
+# Keep project source clean
+*.bak
+*.swp
+```

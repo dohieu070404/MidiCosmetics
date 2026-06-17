@@ -28,6 +28,7 @@ const envSchema = z.object({
   APP_NAME: z.string().min(1).default('Midi Cosmetics API'),
   API_PREFIX: z.string().min(1).default('/api/v1'),
   DATABASE_URL: z.string().url(),
+  DIRECT_URL: z.string().url().optional(),
 
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
@@ -73,7 +74,12 @@ const envSchema = z.object({
   UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
   UPLOAD_IMAGE_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
   UPLOAD_SPREADSHEET_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(10),
-  IMPORT_BATCH_SIZE: z.coerce.number().int().min(10).max(200).default(100),
+
+  // Deployment/runtime controls. These must remain disabled in production serverless runtime.
+  RUN_MIGRATIONS: z.string().default('false'),
+  DATABASE_SYNC_STRATEGY: z.enum(['none', 'migrate', 'push']).default('none'),
+  SEED_DATABASE: z.string().default('false'),
+  AUTO_RESET_FAILED_MIGRATIONS: z.string().default('false'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -108,8 +114,24 @@ const assertProductionSafety = () => {
     throw new Error('ALLOW_ADMIN_SEED must be false when NODE_ENV=production');
   }
 
-  if ((process.env.VERCEL === '1' || process.env.VERCEL_REGION) && envVars.UPLOAD_DRIVER !== 'cloudinary') {
-    throw new Error('UPLOAD_DRIVER must be cloudinary when deploying to Vercel production because local /uploads is not durable');
+  if (parseBoolean(envVars.SEED_DATABASE)) {
+    throw new Error('SEED_DATABASE must be false when NODE_ENV=production');
+  }
+
+  if (parseBoolean(envVars.RUN_MIGRATIONS)) {
+    throw new Error('RUN_MIGRATIONS must be false when NODE_ENV=production');
+  }
+
+  if (envVars.DATABASE_SYNC_STRATEGY !== 'none') {
+    throw new Error('DATABASE_SYNC_STRATEGY must be none when NODE_ENV=production');
+  }
+
+  if (parseBoolean(envVars.AUTO_RESET_FAILED_MIGRATIONS)) {
+    throw new Error('AUTO_RESET_FAILED_MIGRATIONS must be false when NODE_ENV=production');
+  }
+
+  if (envVars.UPLOAD_DRIVER !== 'cloudinary') {
+    throw new Error('UPLOAD_DRIVER must be cloudinary when NODE_ENV=production');
   }
 
   if (envVars.ADMIN_BOOTSTRAP_ENABLED && parseBoolean(envVars.ADMIN_BOOTSTRAP_ENABLED)) {
@@ -135,6 +157,15 @@ export const env = Object.freeze({
   appName: envVars.APP_NAME,
   apiPrefix: envVars.API_PREFIX,
   databaseUrl: envVars.DATABASE_URL,
+  directUrl: envVars.DIRECT_URL || '',
+  database: {
+    url: envVars.DATABASE_URL,
+    directUrl: envVars.DIRECT_URL || '',
+    syncStrategy: envVars.DATABASE_SYNC_STRATEGY,
+    runMigrations: parseBoolean(envVars.RUN_MIGRATIONS),
+    seedDatabase: parseBoolean(envVars.SEED_DATABASE),
+    autoResetFailedMigrations: parseBoolean(envVars.AUTO_RESET_FAILED_MIGRATIONS),
+  },
   auth: {
     jwtAccessSecret: envVars.JWT_ACCESS_SECRET,
     jwtRefreshSecret: envVars.JWT_REFRESH_SECRET,
@@ -183,9 +214,6 @@ export const env = Object.freeze({
     adminAlertEmail: envVars.ADMIN_ALERT_EMAIL || '',
     enabled: Boolean(envVars.SMTP_HOST && envVars.MAIL_FROM),
     adminAlertEnabled: Boolean(envVars.SMTP_HOST && envVars.MAIL_FROM && envVars.ADMIN_ALERT_EMAIL),
-  },
-  import: {
-    batchSize: envVars.IMPORT_BATCH_SIZE,
   },
   upload: {
     driver: envVars.UPLOAD_DRIVER,

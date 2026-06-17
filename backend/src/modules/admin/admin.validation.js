@@ -110,15 +110,6 @@ export const featuredToggleSchema = z.object({
   query: z.object({}).optional(),
 });
 
-
-export const importProcessBatchSchema = z.object({
-  body: z.object({
-    batchSize: z.coerce.number().int().min(10).max(200).optional(),
-  }).strict().optional().default({}),
-  params: uuidParams,
-  query: z.object({}).optional(),
-});
-
 export const adminBootstrapSchema = z.object({
   body: z.object({
     email: z.string().trim().email().transform((value) => value.toLowerCase()),

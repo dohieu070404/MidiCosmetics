@@ -34,7 +34,5 @@ export const API_ENDPOINTS = Object.freeze({
     productImportTemplate: "/admin/imports/products/template",
     previewProductImport: "/admin/imports/products/preview",
     confirmProductImport: (uuid) => `/admin/imports/products/${uuid}/confirm`,
-    processProductImportBatch: (uuid) => `/admin/imports/products/${uuid}/process-batch`,
-    completeProductImportJob: (uuid) => `/admin/imports/products/${uuid}/complete`,
   },
 });

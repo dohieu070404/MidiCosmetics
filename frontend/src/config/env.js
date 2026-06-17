@@ -7,7 +7,7 @@ const booleanStringSchema = z
 const envSchema = z.object({
   APP_NAME: z.string().min(1),
   API_BASE_URL: z.string().min(1),
-  API_ORIGIN: z.string().url().optional(),
+  API_ORIGIN: z.string().url(),
   ENABLE_API_MOCKING: booleanStringSchema,
   MODE: z.string().min(1),
   IS_PROD: z.boolean(),
@@ -17,8 +17,8 @@ const envSchema = z.object({
 
 const rawEnv = {
   APP_NAME: import.meta.env.VITE_APP_NAME ?? "Midi Cosmetics",
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
-  API_ORIGIN: import.meta.env.VITE_API_ORIGIN || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8080"),
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1",
+  API_ORIGIN: import.meta.env.VITE_API_ORIGIN ?? "http://localhost:8080",
   ENABLE_API_MOCKING: import.meta.env.VITE_ENABLE_API_MOCKING ?? "false",
   MODE: import.meta.env.MODE,
   IS_PROD: import.meta.env.PROD,

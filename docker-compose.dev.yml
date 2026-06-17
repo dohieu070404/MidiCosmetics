@@ -1,4 +1,4 @@
-services:
-  mysql:
-    ports:
-      - "${MYSQL_PORT:-3037}:3306"
+# Local development override.
+# Database is NOT started by Docker anymore.
+# Backend connects directly to Supabase using backend/.env.
+services: {}

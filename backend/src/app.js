@@ -58,7 +58,6 @@ export const createApp = () => {
   app.use(globalRateLimiter);
 
   app.get('/health', healthController.ready);
-  app.get('/api/health', healthController.ready);
   app.get('/', (req, res) =>
     res.success({
       message: 'Midi Cosmetics API is running',

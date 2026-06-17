@@ -425,21 +425,6 @@ export const adminController = {
     return ok(res, 'Product import completed', { job });
   }),
 
-  processProductImportBatch: asyncHandler(async (req, res) => {
-    const job = await adminService.processProductImportBatch(req.user, req.validated.params.uuid, req.validated.body);
-    const summary = job.summary || job._summary || {};
-    await withAudit(req, { action: 'IMPORT_PRODUCTS_BATCH', entityType: 'ImportJob', entityId: job.uuid, afterData: job, metadata: { totalRows: job.totalRows, successRows: job.successRows, failedRows: job.failedRows, summary } });
-    return ok(res, job.status === 'COMPLETED' ? 'Product import completed' : 'Product import batch processed', { job });
-  }),
-
-  completeProductImportJob: asyncHandler(async (req, res) => {
-    const job = await adminService.completeProductImportJob(req.user, req.validated.params.uuid);
-    const summary = job.summary || job._summary || {};
-    await withAudit(req, { action: 'IMPORT_PRODUCTS_COMPLETED', entityType: 'ImportJob', entityId: job.uuid, afterData: job, metadata: { totalRows: job.totalRows, successRows: job.successRows, failedRows: job.failedRows, summary } });
-    emailNotificationService.sendProductImportCompleted(req, job);
-    return ok(res, 'Product import job completed', { job });
-  }),
-
   importProducts: asyncHandler(async (req, res) => {
     const job = await adminService.importProducts(req.user, req.file);
     const summary = job.summary || job._summary || {};

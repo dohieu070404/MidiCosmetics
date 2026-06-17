@@ -17,7 +17,7 @@ const allowedExcelExtensions = new Set(['.xlsx']);
 
 const sanitizeExtension = (filename = '') => path.extname(filename).toLowerCase();
 
-const diskStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination(req, file, callback) {
     try {
       callback(null, ensureUploadDir());
@@ -31,11 +31,6 @@ const diskStorage = multer.diskStorage({
   },
 });
 
-// Cloudinary production uploads should not depend on a writable local /uploads folder.
-// Multer memory storage keeps the image in memory and admin.service streams it to Cloudinary.
-const imageStorage = env.upload.driver === 'cloudinary' ? multer.memoryStorage() : diskStorage;
-const excelStorage = diskStorage;
-
 const buildFileFilter = ({ allowedTypes, allowedExtensions, label }) => (req, file, callback) => {
   const extension = sanitizeExtension(file.originalname || '');
   if (!allowedTypes.has(file.mimetype) || !allowedExtensions.has(extension)) {
@@ -45,7 +40,7 @@ const buildFileFilter = ({ allowedTypes, allowedExtensions, label }) => (req, fi
   return callback(null, true);
 };
 
-const readBytesFromPath = async (filePath, length = 16) => {
+const readBytes = async (filePath, length = 16) => {
   const handle = await fs.open(filePath, 'r');
   try {
     const buffer = Buffer.alloc(length);
@@ -54,11 +49,6 @@ const readBytesFromPath = async (filePath, length = 16) => {
   } finally {
     await handle.close();
   }
-};
-
-const readBytes = async (file, length = 16) => {
-  if (file?.buffer) return file.buffer.subarray(0, Math.min(file.buffer.length, length));
-  return readBytesFromPath(file.path, length);
 };
 
 const isJpeg = (bytes) => bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -73,7 +63,7 @@ const removeRejectedFile = async (file) => {
 export const validateUploadedImageFile = async (req, res, next) => {
   try {
     if (!req.file) return next();
-    const bytes = await readBytes(req.file, 16);
+    const bytes = await readBytes(req.file.path, 16);
     if (!isJpeg(bytes) && !isPng(bytes) && !isWebp(bytes)) {
       await removeRejectedFile(req.file);
       return next(ApiError.badRequest('Nội dung file không phải ảnh jpg, png hoặc webp hợp lệ'));
@@ -88,7 +78,7 @@ export const validateUploadedImageFile = async (req, res, next) => {
 export const validateUploadedXlsxFile = async (req, res, next) => {
   try {
     if (!req.file) return next();
-    const bytes = await readBytes(req.file, 8);
+    const bytes = await readBytes(req.file.path, 8);
     if (!isXlsxZip(bytes)) {
       await removeRejectedFile(req.file);
       return next(ApiError.badRequest('File import phải là .xlsx chuẩn, không chấp nhận CSV/XLS đổi đuôi'));
@@ -101,7 +91,7 @@ export const validateUploadedXlsxFile = async (req, res, next) => {
 };
 
 export const imageUpload = multer({
-  storage: imageStorage,
+  storage,
   limits: {
     fileSize: env.upload.imageMaxFileSizeMb * 1024 * 1024,
     files: 10,
@@ -110,7 +100,7 @@ export const imageUpload = multer({
 });
 
 export const excelUpload = multer({
-  storage: excelStorage,
+  storage,
   limits: {
     fileSize: env.upload.spreadsheetMaxFileSizeMb * 1024 * 1024,
     files: 1,
