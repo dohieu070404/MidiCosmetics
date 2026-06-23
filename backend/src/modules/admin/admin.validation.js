@@ -4,7 +4,8 @@ import { isPrivateOrLocalHostname } from '../../utils/safe-url.js';
 
 const emptyParams = z.object({}).optional();
 const uuidParams = z.object({ uuid: z.string().uuid() });
-const safeText = (schema) => schema.refine((value) => value === undefined || value === null || !/[\u0000-\u001F\u007F<>]/.test(String(value)), 'Nội dung chứa ký tự không hợp lệ');
+const INVALID_TEXT_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F<>]/;
+const safeText = (schema) => schema.refine((value) => value === undefined || value === null || !INVALID_TEXT_CHARS.test(String(value)), 'Nội dung chứa ký tự không hợp lệ');
 const optionalString = (max = 255) => safeText(z.string().trim().max(max).optional().nullable());
 const nullableUuid = z.string().uuid().optional().nullable();
 const normalizeDecimalString = (value) => {

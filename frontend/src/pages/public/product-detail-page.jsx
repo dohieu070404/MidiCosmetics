@@ -18,7 +18,7 @@ const DetailSection = ({ title, children, html }) => {
     <section className="rounded-[1.75rem] border border-border bg-card/70 p-5 sm:p-6">
       <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
       {html ? (
-        <div className="prose prose-sm mt-4 max-w-none break-words leading-8 text-muted-foreground prose-p:my-3 prose-ul:my-3 prose-li:my-1 dark:prose-invert" dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="prose prose-sm mt-4 max-w-none whitespace-pre-wrap break-words leading-8 text-muted-foreground prose-p:my-3 prose-ul:my-3 prose-li:my-1 dark:prose-invert" dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
         <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-8 text-muted-foreground">{children}</p>
       )}
@@ -87,7 +87,7 @@ export function ProductDetailPage() {
             <h1 className="mt-5 text-balance font-display text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">{product.name}</h1>
             <p className="mt-4 text-2xl font-semibold text-primary sm:text-3xl">{product.formattedPrice || formatVnd(product.price, product.currency)}</p>
             {product.description ? (
-              <div className="prose prose-sm mt-6 max-w-none break-words leading-8 text-muted-foreground prose-p:my-3 dark:prose-invert" dangerouslySetInnerHTML={{ __html: product.description }} />
+              <div className="prose prose-sm mt-6 max-w-none whitespace-pre-wrap break-words leading-8 text-muted-foreground prose-p:my-3 dark:prose-invert" dangerouslySetInnerHTML={{ __html: product.description }} />
             ) : (
               <p className="mt-6 whitespace-pre-wrap break-words text-base leading-8 text-muted-foreground">Đang cập nhật mô tả sản phẩm.</p>
             )}
