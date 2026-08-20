@@ -92,10 +92,11 @@ export const quoteService = {
     let quote;
     try {
       quote = await prisma.$transaction(async (tx) => {
-        const openedAt = new Date();
-        const created = await tx.quote.create({ data: { code: quoteCode(), publicTokenHash: hashToken(publicToken), publicTokenCiphertext: encryptQuoteToken(publicToken), requestKey: requestId, status: 'MESSENGER_OPENED', messengerOpenedAt: openedAt, note: note || null, snapshotTotal: total, currency: 'VND', expiresAt } });
+        // Persist first. The client marks MESSENGER_OPENED only after the
+        // server has returned the public token and navigation can begin.
+        const created = await tx.quote.create({ data: { code: quoteCode(), publicTokenHash: hashToken(publicToken), publicTokenCiphertext: encryptQuoteToken(publicToken), requestKey: requestId, status: 'CREATED', note: note || null, snapshotTotal: total, currency: 'VND', expiresAt } });
         await tx.quoteItem.createMany({ data: normalized.map(({ product, quantity, unitPrice, lineTotal }) => ({ quoteId: created.id, productId: product.id, productUuid: product.uuid, name: product.name, sku: product.sku, unit: product.unit, imageUrl: productImage(product), unitPrice, quantity, lineTotal })) });
-        await tx.interestEvent.createMany({ data: [...normalized.map(({ product }) => ({ eventType: 'INCLUDED_IN_QUOTE', productId: product.id, quoteId: created.id, sessionHash })), { eventType: 'QUOTE_CREATED', quoteId: created.id, sessionHash, metadata: { itemCount: normalized.length, intent: 'MESSENGER' } }, { eventType: 'MESSENGER_CLICKED', quoteId: created.id, sessionHash, metadata: { source: 'QUOTE_CREATE' } }] });
+        await tx.interestEvent.createMany({ data: [...normalized.map(({ product }) => ({ eventType: 'INCLUDED_IN_QUOTE', productId: product.id, quoteId: created.id, sessionHash })), { eventType: 'QUOTE_CREATED', quoteId: created.id, sessionHash, metadata: { itemCount: normalized.length, intent: 'MESSENGER' } }] });
         return tx.quote.findUnique({ where: { id: created.id }, include: { items: true } });
       });
     } catch (error) {

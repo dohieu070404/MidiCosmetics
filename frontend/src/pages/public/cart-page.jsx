@@ -16,6 +16,34 @@ import { selectCartCount, selectCartSubtotal, useCartStore } from "@/stores/cart
 
 const quoteText = (quote, url) => [`Phiếu yêu cầu ${quote.code || quote.quoteCode || "MIDI"}`, ...(quote.items || []).map((item) => `• ${item.name} × ${item.quantity}: ${formatVnd(item.lineTotal || item.unitPrice * item.quantity)}`), `Tổng tạm tính: ${formatVnd(quote.subtotal || quote.snapshotTotal)}`, `Xem phiếu: ${url}`, "Giá và tồn kho sẽ được Midi Cosmetics xác nhận qua Messenger."].join("\n");
 
+const openPendingMessengerWindow = () => {
+  const popup = window.open("about:blank", "_blank");
+  if (!popup) return null;
+
+  try {
+    popup.document.title = "Midi Cosmetics";
+    popup.document.documentElement.lang = "vi";
+    popup.document.body.style.cssText = "margin:0;min-height:100vh;display:grid;place-items:center;background:#faf7f2;color:#2d211d;font:16px/1.6 system-ui,sans-serif";
+    popup.document.body.textContent = "Đang tạo phiếu yêu cầu…";
+  } catch {
+    // The placeholder is optional; navigation still works if a browser blocks
+    // access to the temporary about:blank document.
+  }
+
+  return popup;
+};
+
+const navigateToMessenger = (popup) => {
+  if (!popup || popup.closed) return false;
+  try {
+    popup.opener = null;
+    popup.location.replace(env.MESSENGER_URL);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export function CartPage() {
   const items = useCartStore((state) => state.items);
   const count = useCartStore(selectCartCount);
@@ -62,12 +90,13 @@ export function CartPage() {
   const createQuote = async () => {
     if (!items.length || unavailable.length || (captchaRequired && !recaptchaToken)) return;
     if (!requestId.current) requestId.current = globalThis.crypto.randomUUID();
-    const messengerWindow = window.open(env.MESSENGER_URL, "_blank");
+    // Open a neutral window from the user gesture so browsers do not block it,
+    // but do not navigate to Messenger until the API has persisted the quote.
+    const messengerWindow = openPendingMessengerWindow();
     if (!messengerWindow) {
       setError("Trình duyệt đã chặn cửa sổ Messenger. Hãy cho phép pop-up rồi thử lại; phiếu chưa được ghi nhận.");
       return;
     }
-    messengerWindow.opener = null;
     setCreating(true); setError("");
     try {
       const response = await publicApi.createQuote({ items: items.map((item) => ({ productUuid: item.uuid, quantity: item.quantity })), note: note.trim() || undefined, intent: "MESSENGER", requestId: requestId.current, ...(captchaRequired ? { recaptchaToken } : {}) });
@@ -76,13 +105,30 @@ export function CartPage() {
       const token = payload.publicToken || quote.publicToken;
       const publicPath = payload.publicPath || (token ? ROUTE_PATHS.quote(token) : "");
       const publicUrl = payload.publicUrl || (publicPath ? new URL(publicPath, window.location.origin).toString() : "");
-      setCreated({ ...quote, publicToken: token, publicUrl });
+      if (!quote?.uuid || !token || !publicUrl) throw new Error("Máy chủ chưa trả về đầy đủ thông tin phiếu. Vui lòng thử lại.");
+
+      const messengerOpened = navigateToMessenger(messengerWindow);
+      let savedQuote = quote;
+      if (messengerOpened) {
+        try {
+          const openedResponse = await publicApi.markMessengerOpened(token);
+          savedQuote = openedResponse?.data?.quote || savedQuote;
+        } catch {
+          // The quote is already safely stored as CREATED. Admin can still see
+          // it even if the secondary analytics/status request is interrupted.
+        }
+      }
+
+      setCreated({ ...savedQuote, publicToken: token, publicUrl, messengerOpened });
       setStep("success");
       clearCart();
-      notify("Đã mở Messenger và ghi nhận phiếu yêu cầu.");
+      notify(messengerOpened ? "Đã tạo phiếu và mở Messenger." : "Đã tạo phiếu. Hãy dùng nút mở lại Messenger.");
     } catch (err) {
+      try { if (!messengerWindow.closed) messengerWindow.close(); } catch { /* noop */ }
       setError(err.message || "Chưa thể tạo phiếu. Vui lòng thử lại.");
-      if (captchaRequired && /CAPTCHA/i.test(err.message || "")) { setRecaptchaToken(""); setRecaptchaResetNonce((value) => value + 1); }
+      // Google reCAPTCHA tokens are single-use and short-lived. Always request
+      // a fresh token after an unsuccessful create attempt.
+      if (captchaRequired) { setRecaptchaToken(""); setRecaptchaResetNonce((value) => value + 1); }
     } finally { setCreating(false); }
   };
 
@@ -91,7 +137,7 @@ export function CartPage() {
 
   if (step === "success" && created) {
     const text = quoteText(created, created.publicUrl);
-    return <Container className="py-16 sm:py-24"><div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-10"><div className="grid size-12 place-items-center rounded-full bg-emerald-700 text-white"><Check className="size-5" /></div><p className="midi-eyebrow mt-7">Đã mở Messenger và lưu phiếu</p><h1 className="mt-4 font-display text-4xl font-normal leading-[.98] tracking-[-0.05em] sm:text-5xl">Phiếu đã sẵn sàng để Midi Cosmetics xác nhận.</h1><div className="mt-8 border-y border-border py-5 text-base"><div className="flex justify-between gap-4"><span>Mã phiếu</span><strong>{created.code || created.quoteCode}</strong></div><div className="mt-3 flex justify-between gap-4"><span>Tổng tạm tính</span><strong>{formatVnd(created.subtotal || created.snapshotTotal)}</strong></div></div><p className="mt-5 text-base leading-7 text-muted-foreground">Đây không phải hóa đơn tài chính hoặc đơn đã xác nhận. Giá và tồn kho sẽ được chủ shop xác nhận qua Messenger.</p><div className="mt-7 grid gap-3 sm:grid-cols-2"><Button type="button" onClick={() => copy(created.publicUrl, "Đã sao chép link phiếu.")} variant="outline"><Copy /> Sao chép link phiếu</Button><Button type="button" onClick={() => copy(text, "Đã sao chép nội dung phiếu.")} variant="outline"><Copy /> Sao chép nội dung</Button><Button type="button" onClick={openMessenger} className="sm:col-span-2">Mở lại Messenger Midi Cosmetics <ExternalLink /></Button>{navigator.share ? <Button type="button" variant="outline" className="sm:col-span-2" onClick={() => navigator.share({ title: `Phiếu ${created.code || created.quoteCode}`, text, url: created.publicUrl }).catch(() => null)}><Share2 /> Chia sẻ bằng ứng dụng khác</Button> : null}</div><Link to={ROUTE_PATHS.products} className="midi-link-arrow mt-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em]">Tiếp tục xem sản phẩm <ArrowRight className="size-4" /></Link></div></Container>;
+    return <Container className="py-16 sm:py-24"><div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-10"><div className="grid size-12 place-items-center rounded-full bg-emerald-700 text-white"><Check className="size-5" /></div><p className="midi-eyebrow mt-7">{created.messengerOpened ? "Đã tạo phiếu và mở Messenger" : "Đã lưu phiếu yêu cầu"}</p><h1 className="mt-4 font-display text-4xl font-normal leading-[.98] tracking-[-0.05em] sm:text-5xl">Phiếu đã sẵn sàng để Midi Cosmetics xác nhận.</h1><div className="mt-8 border-y border-border py-5 text-base"><div className="flex justify-between gap-4"><span>Mã phiếu</span><strong>{created.code || created.quoteCode}</strong></div><div className="mt-3 flex justify-between gap-4"><span>Tổng tạm tính</span><strong>{formatVnd(created.subtotal || created.snapshotTotal)}</strong></div></div><p className="mt-5 text-base leading-7 text-muted-foreground">Đây không phải hóa đơn tài chính hoặc đơn đã xác nhận. Giá và tồn kho sẽ được chủ shop xác nhận qua Messenger.</p>{!created.messengerOpened ? <p className="mt-3 text-sm font-medium text-amber-800">Phiếu đã có trong trang quản trị, nhưng trình duyệt chưa mở được Messenger. Hãy dùng nút bên dưới.</p> : null}<div className="mt-7 grid gap-3 sm:grid-cols-2"><Button type="button" onClick={() => copy(created.publicUrl, "Đã sao chép link phiếu.")} variant="outline"><Copy /> Sao chép link phiếu</Button><Button type="button" onClick={() => copy(text, "Đã sao chép nội dung phiếu.")} variant="outline"><Copy /> Sao chép nội dung</Button><Button type="button" onClick={openMessenger} className="sm:col-span-2">Mở lại Messenger Midi Cosmetics <ExternalLink /></Button>{navigator.share ? <Button type="button" variant="outline" className="sm:col-span-2" onClick={() => navigator.share({ title: `Phiếu ${created.code || created.quoteCode}`, text, url: created.publicUrl }).catch(() => null)}><Share2 /> Chia sẻ bằng ứng dụng khác</Button> : null}</div><Link to={ROUTE_PATHS.products} className="midi-link-arrow mt-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em]">Tiếp tục xem sản phẩm <ArrowRight className="size-4" /></Link></div></Container>;
   }
 
   if (!items.length) return <Container className="py-16 sm:py-24"><StatePanel title="Giỏ hàng đang trống" description="Bạn không cần đăng nhập. Chỉ cần thêm sản phẩm rồi tạo phiếu yêu cầu." actionLabel="Khám phá sản phẩm" onAction={() => { window.location.href = ROUTE_PATHS.products; }} /></Container>;
@@ -104,7 +150,7 @@ export function CartPage() {
           <p className="midi-eyebrow">{step === "review" ? "Nội dung phiếu" : "Tạm tính"}</p>
           <div className="mt-5 grid gap-3 border-b border-border pb-5 text-base"><div className="flex justify-between"><span>Số lượng</span><strong>{count}</strong></div><div className="flex justify-between font-display text-xl"><span>Tổng tạm tính</span><strong className="font-normal">{formatVnd(subtotal)}</strong></div></div>
           <label className="mt-5 grid gap-2 text-sm font-semibold uppercase tracking-[0.08em]">Ghi chú tùy chọn<textarea value={note} onChange={(event) => setNote(event.target.value.slice(0, 1000))} rows={4} disabled={step === "cart"} className="resize-y rounded-lg border border-input bg-background p-3 text-base font-normal normal-case tracking-normal outline-none transition-colors focus:border-primary" placeholder="Màu sắc, thời gian liên hệ hoặc điều bạn muốn shop lưu ý..." /><span className="text-right text-xs font-normal text-muted-foreground">{note.length}/1000</span></label>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">{captchaRequired ? "Phiếu chỉ được ghi nhận sau khi CAPTCHA hợp lệ và cửa sổ Messenger mở thành công." : "CAPTCHA đang tạm tắt ở môi trường local. Phiếu được ghi nhận sau khi cửa sổ Messenger mở thành công."}</p>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">{captchaRequired ? "Sau khi CAPTCHA hợp lệ, hệ thống sẽ lưu phiếu trước rồi mới mở Messenger." : "CAPTCHA đang tạm tắt ở môi trường local. Hệ thống sẽ lưu phiếu trước rồi mới mở Messenger."}</p>
           {checking ? <p className="mt-3 text-sm text-muted-foreground">Đang kiểm tra giá và tồn kho...</p> : null}
           {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
           {step === "cart" ? <Button type="button" className="mt-5 w-full" onClick={beginReview} disabled={checking || unavailable.length > 0}>Xem trước phiếu <ArrowRight /></Button> : <div className="mt-5 grid gap-3">

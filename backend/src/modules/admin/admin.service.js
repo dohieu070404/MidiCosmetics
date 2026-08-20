@@ -1114,7 +1114,7 @@ export const adminService = {
 
   async updateBlogPost(actor, uuid, body) {
     const current = await findByUuidOrThrow(prisma.blogPost, uuid, { includeDeleted: true });
-    
+
     const data = await buildBlogPostData(body, uuid);
     await prisma.$transaction(async (tx) => {
       await tx.blogPost.update({ where: { id: current.id }, data });
@@ -1125,14 +1125,14 @@ export const adminService = {
 
   async deleteBlogPost(actor, uuid) {
     const current = await findByUuidOrThrow(prisma.blogPost, uuid, { includeDeleted: true });
-    
+
     await prisma.blogPost.update({ where: { id: current.id }, data: { deletedAt: new Date(), status: 'ARCHIVED' } });
     return true;
   },
 
   async setBlogPostStatus(actor, uuid, status) {
     const current = await findByUuidOrThrow(prisma.blogPost, uuid, { includeDeleted: true });
-    
+
     await prisma.blogPost.update({
       where: { id: current.id },
       data: { status, publishedAt: status === 'PUBLISHED' ? current.publishedAt || new Date() : current.publishedAt },
@@ -1340,18 +1340,31 @@ export const adminService = {
     let media;
 
     if (shouldUploadToCloudinary()) {
-      const result = await cloudinary.uploader.upload(file.path, {
-        folder: 'midi-cosmetics',
-        resource_type: 'image',
-      });
-      media = {
-        provider: 'CLOUDINARY',
-        publicId: result.public_id,
-        secureUrl: result.secure_url,
-        width: result.width,
-        height: result.height,
-      };
-      await fs.unlink(file.path).catch(() => null);
+      try {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'midi-cosmetics',
+          resource_type: 'image',
+        });
+        if (!result?.public_id || !result?.secure_url) throw new Error('Cloudinary response is incomplete');
+        media = {
+          provider: 'CLOUDINARY',
+          publicId: result.public_id,
+          secureUrl: result.secure_url,
+          width: result.width,
+          height: result.height,
+        };
+      } catch {
+        throw new ApiError(
+          502,
+          'Không thể tải ảnh lên Cloudinary. Hãy kiểm tra Cloud Name, API Key, API Secret và kích thước ảnh trong cấu hình Vercel.',
+          [],
+          { code: 'CLOUDINARY_UPLOAD_FAILED' },
+        );
+      } finally {
+        // Vercel only provides temporary disk space; remove the staged upload
+        // whether Cloudinary accepts or rejects it.
+        await fs.unlink(file.path).catch(() => null);
+      }
     } else {
       media = {
         provider: 'LOCAL',
@@ -1362,23 +1375,34 @@ export const adminService = {
       };
     }
 
-    return prisma.mediaAsset.create({
-      data: {
-        uploaderId: actor.id,
-        provider: media.provider,
-        publicId: media.publicId,
-        originalName: file.originalname,
-        fileName: file.filename,
-        mimeType: file.mimetype,
-        sizeBytes: BigInt(file.size),
-        width: media.width,
-        height: media.height,
-        secureUrl: media.secureUrl,
-        altText: body.altText || null,
-        metadata: { encoding: file.encoding },
-      },
-      select: mediaSelect,
-    });
+    try {
+      return await prisma.mediaAsset.create({
+        data: {
+          uploaderId: actor.id,
+          provider: media.provider,
+          publicId: media.publicId,
+          originalName: file.originalname,
+          fileName: file.filename,
+          mimeType: file.mimetype,
+          sizeBytes: BigInt(file.size),
+          width: media.width,
+          height: media.height,
+          secureUrl: media.secureUrl,
+          altText: body.altText || null,
+          metadata: { encoding: file.encoding },
+        },
+        select: mediaSelect,
+      });
+    } catch (error) {
+      // Keep storage and the database consistent when the metadata insert
+      // fails after a successful file upload.
+      if (media.provider === 'CLOUDINARY' && media.publicId) {
+        await cloudinary.uploader.destroy(media.publicId).catch(() => null);
+      } else if (media.provider === 'LOCAL') {
+        await fs.unlink(file.path).catch(() => null);
+      }
+      throw error;
+    }
   },
 
   async updateMedia(uuid, body) {

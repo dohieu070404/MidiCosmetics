@@ -11,7 +11,6 @@ export const apiClient = axios.create({
   withCredentials: true,
   headers: {
     Accept: "application/json",
-    "Content-Type": "application/json",
   },
 });
 
@@ -23,6 +22,15 @@ const shouldAttachAccessToken = (url = '') => {
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token && shouldAttachAccessToken(config.url)) config.headers.Authorization = `Bearer ${token}`;
+
+  // Let Axios/the browser add the multipart boundary. Keeping the JSON default
+  // (or manually forcing multipart/form-data) produces an invalid request on
+  // some browsers and serverless runtimes.
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    if (typeof config.headers?.delete === "function") config.headers.delete("Content-Type");
+    else if (config.headers) delete config.headers["Content-Type"];
+  }
+
   return config;
 });
 
