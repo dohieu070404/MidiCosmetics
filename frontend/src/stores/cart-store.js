@@ -40,7 +40,20 @@ export const useCartStore = create(
         items: state.items.map((item) => item.uuid === uuid ? { ...item, quantity: Math.max(1, Math.min(20, Number(quantity) || 1)) } : item),
       })),
       removeItem: (uuid) => set((state) => ({ items: state.items.filter((item) => item.uuid !== uuid) })),
-      replaceItem: (uuid, nextItem) => set((state) => ({ items: state.items.map((item) => item.uuid === uuid ? { ...item, ...nextItem } : item) })),
+      replaceItem: (uuid, nextItem) => set((state) => {
+        const refreshed = state.items.map((item) => item.uuid === uuid ? { ...item, ...nextItem } : item);
+        // A database restore/import can assign a new UUID to the same slug.
+        // Merge any stale/current duplicate after replacing the UUID so the
+        // quote payload never contains duplicate or obsolete product IDs.
+        const byUuid = new Map();
+        for (const item of refreshed) {
+          const existing = byUuid.get(item.uuid);
+          byUuid.set(item.uuid, existing
+            ? { ...existing, ...item, quantity: Math.min(20, Number(existing.quantity || 0) + Number(item.quantity || 0)) }
+            : item);
+        }
+        return { items: [...byUuid.values()] };
+      }),
       clearCart: () => set({ items: [], drawerOpen: false }),
     }),
     {
@@ -52,4 +65,4 @@ export const useCartStore = create(
 );
 
 export const selectCartCount = (state) => state.items.reduce((total, item) => total + item.quantity, 0);
-export const selectCartSubtotal = (state) => state.items.reduce((total, item) => total + toNumber(item.price) * item.quantity, 0);
+export const selectCartSubtotal = (state) => state.items.reduce((total, item) => total + toNumber(item.price) * item.quantity, 0); s

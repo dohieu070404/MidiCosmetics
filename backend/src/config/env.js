@@ -25,6 +25,17 @@ const csvToArray = (value) => {
     .filter(Boolean);
 };
 
+const normalizeHostname = (value) => {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return '';
+  try {
+    const candidate = raw.includes('://') ? raw : `https://${raw}`;
+    return new URL(candidate).hostname.replace(/\.$/, '');
+  } catch {
+    return raw.replace(/^https?:\/\//, '').split('/')[0].split(':')[0].replace(/\.$/, '');
+  }
+};
+
 const emptyStringToUndefined = (value) => {
   if (typeof value === 'string' && value.trim() === '') return undefined;
   return value;
@@ -90,7 +101,7 @@ const envSchema = z.object({
     }, 'PUBLIC_UPLOAD_BASE_URL must be an http(s) URL without embedded credentials').optional()
   ),
   UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
-  UPLOAD_IMAGE_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
+  UPLOAD_IMAGE_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(4),
   UPLOAD_SPREADSHEET_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(10),
 
   // Deployment/runtime controls. These must remain disabled in production serverless runtime.
@@ -257,7 +268,9 @@ export const env = Object.freeze({
   quoteCaptchaEnabled: parseBoolean(envVars.QUOTE_CAPTCHA_ENABLED),
   recaptcha: {
     secretKey: envVars.RECAPTCHA_SECRET_KEY || '',
-    allowedHostnames: csvToArray(envVars.RECAPTCHA_ALLOWED_HOSTNAMES).map((hostname) => hostname.toLowerCase()),
+    // Accept either bare hostnames or accidentally pasted https:// URLs in
+    // Vercel, then compare only normalized hostnames at verification time.
+    allowedHostnames: [...new Set(csvToArray(envVars.RECAPTCHA_ALLOWED_HOSTNAMES).map(normalizeHostname).filter(Boolean))],
   },
   email: {
     smtpHost: envVars.SMTP_HOST || '',
