@@ -45,6 +45,7 @@ Seed không tạo hoặc thay đổi admin. Tài khoản thật đã có trong S
 
 - PostgreSQL/Supabase; `DATABASE_URL` dùng runtime pooler, `DIRECT_URL` dùng migrations.
 - Chạy `npm run prisma:deploy` trong release job, không tự migrate trong runtime.
+- Trên Windows có thể dùng `scripts/deploy-production-migrations.ps1` ở thư mục gốc; script đọc credential từ `backend/.env.production.local` đã bị Git ignore và không reset/seed dữ liệu.
 - Dùng Cloudinary cho media trên môi trường không có persistent disk.
 - Giữ JWT, database, SMTP và Cloudinary secrets ngoài source.
 - Không có seed admin hoặc mật khẩu quản trị mặc định trong source.

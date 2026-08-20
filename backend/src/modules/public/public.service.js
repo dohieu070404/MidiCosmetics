@@ -200,10 +200,6 @@ const buildPublicHomepageSections = ({ sections, featuredProducts, featuredBlogs
     if (section.type === 'FEATURED_PRODUCTS') return { ...base, items: featuredProducts.slice(0, config.limit || 8) };
     if (section.type === 'FEATURED_POSTS') return { ...base, items: serializeHomepagePosts(featuredBlogs).slice(0, config.limit || 6) };
     return base;
-  })
-  .filter((section) => {
-    if (['FEATURED_PRODUCTS', 'FEATURED_POSTS'].includes(section.type)) return Array.isArray(section.items) && section.items.length > 0;
-    return true;
   });
 
 

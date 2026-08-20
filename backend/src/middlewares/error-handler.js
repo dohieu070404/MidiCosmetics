@@ -25,15 +25,42 @@ const mapPrismaError = (error) => {
       ]);
     }
 
+    if (['P2021', 'P2022'].includes(error.code)) {
+      return new ApiError(
+        HTTP_STATUS.SERVICE_UNAVAILABLE,
+        'Database schema is not ready. Run the pending Prisma migrations and retry.',
+        [{ field: null, code: 'DATABASE_SCHEMA_NOT_READY', message: 'A required database table or column is unavailable.' }],
+        { code: 'DATABASE_SCHEMA_NOT_READY' }
+      );
+    }
+
+    if (error.code === 'P2037') {
+      return new ApiError(
+        HTTP_STATUS.SERVICE_UNAVAILABLE,
+        'Database is temporarily busy. Please retry shortly.',
+        [{ field: null, code: 'DATABASE_CONNECTION_LIMIT', message: 'The database connection limit was reached.' }],
+        { code: 'DATABASE_CONNECTION_LIMIT' }
+      );
+    }
+
     return new ApiError(HTTP_STATUS.BAD_REQUEST, 'Database request failed', [
       { field: null, code: error.code, message: env.isProduction ? 'Database request failed' : error.message },
-    ]);
+    ], { code: 'DATABASE_REQUEST_FAILED' });
   }
 
   if (error instanceof Prisma.PrismaClientValidationError) {
     return ApiError.badRequest('Invalid database query', [
       { field: null, code: 'PRISMA_VALIDATION_ERROR', message: env.isProduction ? 'Invalid database query' : error.message },
     ]);
+  }
+
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return new ApiError(
+      HTTP_STATUS.SERVICE_UNAVAILABLE,
+      'Database is temporarily unavailable.',
+      [{ field: null, code: 'DATABASE_UNAVAILABLE', message: 'The application could not connect to the database.' }],
+      { code: 'DATABASE_UNAVAILABLE' }
+    );
   }
 
   return error;
@@ -118,6 +145,7 @@ export const errorHandler = (error, req, res, next) => {
   return sendError(res, {
     statusCode,
     message,
+    code: normalizedError.code,
     errors: env.isDevelopment && errors.length === 0 && normalizedError.stack
       ? [{ field: null, code: 'STACK_TRACE', message: normalizedError.stack }]
       : errors,

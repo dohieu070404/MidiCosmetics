@@ -9,10 +9,11 @@ export const sendSuccess = (res, { statusCode = 200, message = 'Success', data =
   });
 };
 
-export const sendError = (res, { statusCode = 500, message = 'Internal server error', errors = [] } = {}) => {
+export const sendError = (res, { statusCode = 500, message = 'Internal server error', code, errors = [] } = {}) => {
   return res.status(statusCode).json({
     success: false,
     message,
+    ...(code ? { code } : {}),
     errors: toSafeJson(errors),
   });
 };

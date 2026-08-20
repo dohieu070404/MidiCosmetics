@@ -103,7 +103,7 @@ temp
 
 # Docker local volumes / data
 docker-data
-data
+/data/
 postgres_data
 mysql_data
 

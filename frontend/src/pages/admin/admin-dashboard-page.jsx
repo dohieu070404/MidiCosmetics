@@ -7,21 +7,54 @@ import { AdminTable, Notice, PageHeader, SectionCard, StatusBadge, formatDate } 
 export function AdminDashboardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
+    let active = true;
+    const requests = [
       adminApi.dashboard(),
       adminApi.listQuotes({ limit: 1, status: 'CREATED' }),
       adminApi.listQuotes({ limit: 1, status: 'MESSENGER_OPENED' }),
       adminApi.listQuotes({ limit: 1, status: 'PROCESSED' }),
       adminApi.interestAnalytics({}),
-    ]).then(([dashboard, newQuotes, openedQuotes, processedQuotes, interest]) => setData({
-      ...dashboard.data,
-      newQuotes: newQuotes.meta?.total ?? newQuotes.data?.quotes?.length ?? 0,
-      openedQuotes: openedQuotes.meta?.total ?? openedQuotes.data?.quotes?.length ?? 0,
-      processedQuotes: processedQuotes.meta?.total ?? processedQuotes.data?.quotes?.length ?? 0,
-      interest: interest.data,
-    })).catch((err) => setError(err.message));
+    ];
+
+    Promise.allSettled(requests).then((results) => {
+      if (!active) return;
+
+      const [dashboard, newQuotes, openedQuotes, processedQuotes, interest] = results;
+      if (dashboard.status === 'rejected') {
+        setError(`Không thể tải dữ liệu tổng quan: ${dashboard.reason?.message || 'API không phản hồi.'}`);
+        setLoading(false);
+        return;
+      }
+
+      const responseCount = (result) => result.status === 'fulfilled'
+        ? result.value.meta?.total ?? result.value.data?.quotes?.length ?? 0
+        : 0;
+      const unavailable = [
+        ['phiếu mới', newQuotes],
+        ['phiếu đã mở Messenger', openedQuotes],
+        ['phiếu đã xử lý', processedQuotes],
+        ['phân tích mức quan tâm', interest],
+      ].filter(([, result]) => result.status === 'rejected');
+
+      setData({
+        ...dashboard.value.data,
+        newQuotes: responseCount(newQuotes),
+        openedQuotes: responseCount(openedQuotes),
+        processedQuotes: responseCount(processedQuotes),
+        interest: interest.status === 'fulfilled' ? interest.value.data : null,
+      });
+      setError(unavailable.length
+        ? `Đã tải phần chính. Tạm thời chưa tải được: ${unavailable.map(([label]) => label).join(', ')}. Hãy chạy Prisma migrations trên database production rồi tải lại trang.`
+        : '');
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const cards = useMemo(() => {
@@ -49,8 +82,9 @@ export function AdminDashboardPage() {
   return (
     <div className="grid gap-6">
       <PageHeader title="Tổng quan" description="Theo dõi nội dung, sản phẩm và tín hiệu khách cần tư vấn trong một nơi." actions={quickActions.map((item) => <Link key={item.href} to={item.href} className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition ${item.primary ? 'bg-primary text-primary-foreground hover:-translate-y-0.5' : 'border border-border hover:border-primary hover:text-primary'}`}>{item.label}</Link>)} />
-      <Notice>{error}</Notice>
-      {!data ? <div className="h-48 animate-pulse rounded-3xl bg-secondary" /> : null}
+      <Notice type={data ? 'info' : 'error'}>{error}</Notice>
+      {loading ? <div className="h-48 animate-pulse rounded-3xl bg-secondary" /> : null}
+      {!loading && !data ? <SectionCard title="Chưa thể tải dashboard"><p className="text-sm leading-7 text-muted-foreground">Kiểm tra kết nối API, đăng nhập quản trị và trạng thái migration của database production.</p></SectionCard> : null}
       {data ? <>
         <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           {cards.map((card) => (

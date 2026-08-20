@@ -113,8 +113,21 @@ function EditorialBlock({ editorial, variant = "wine", imageRight = false }) {
 
 export function HomePage() {
   const [data, setData] = useState(null);
+  const [catalogProducts, setCatalogProducts] = useState([]);
   const [error, setError] = useState("");
-  useEffect(() => { publicApi.homepage().then((response) => setData(response.data)).catch(() => setError("Dữ liệu trực tuyến chưa sẵn sàng; đang hiển thị nội dung mặc định của MIDI.")); }, []);
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([
+      publicApi.homepage(),
+      publicApi.listProducts({ limit: 8, sort: "popular" }),
+    ]).then(([homepageResult, productResult]) => {
+      if (!mounted) return;
+      if (homepageResult.status === "fulfilled") setData(homepageResult.value.data);
+      else setError("Dữ liệu trực tuyến chưa sẵn sàng; đang hiển thị nội dung mặc định của MIDI.");
+      if (productResult.status === "fulfilled") setCatalogProducts(productResult.value.data.products || []);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const sections = useMemo(() => data?.sections || [], [data]);
   const heroSection = sectionOf(sections, "HERO");
@@ -122,7 +135,8 @@ export function HomePage() {
   const editorialSection = sectionById(sections, "custom-text");
   const skincareEditorialSection = sectionById(sections, "skincare-editorial");
   const postSection = sectionById(sections, "featured-posts");
-  const products = data ? (productSection?.items || []) : fallbackProducts;
+  const featuredProducts = productSection?.items?.length ? productSection.items : (data?.featuredProducts || []);
+  const products = featuredProducts.length ? featuredProducts : (catalogProducts.length ? catalogProducts : fallbackProducts);
   const posts = data ? (postSection?.items || []) : [];
   const scenes = useMemo(() => {
     const configured = heroSection?.config?.slides;

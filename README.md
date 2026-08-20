@@ -82,6 +82,14 @@ npm run prisma:generate
 npm run prisma:deploy
 ```
 
+Với Windows, cách an toàn và dễ kiểm tra nhất là tạo file local bị Git ignore `backend/.env.production.local` chỉ gồm `DATABASE_URL` và `DIRECT_URL` thật, sau đó chạy:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy-production-migrations.ps1
+```
+
+Script chỉ chạy `prisma migrate deploy`, không chạy `db push`, không reset database và không seed. Sau khi hoàn tất, xóa file `backend/.env.production.local` nếu máy dùng chung. Các route phiếu, analytics và collections cần ba migration `20260813000000_quotes_collections_analytics`, `20260820010000_quote_antispam`, `20260820020000_remove_sample_admin`; nếu chưa chạy, API sẽ trả `DATABASE_SCHEMA_NOT_READY` thay vì lỗi `400` khó xác định.
+
 Migration mới thêm collections SEO/cover, báo giá, dòng sản phẩm trong báo giá, sự kiện quan tâm và dọn tài khoản admin mẫu cũ theo cơ chế bảo toàn bài viết. Migration chỉ có hiệu lực trên Supabase sau khi release job chạy thành công; không bật migration tự động trong runtime.
 
 ## Kiểm tra trước khi phát hành

@@ -26,8 +26,11 @@ export const publicApi = {
 export const mediaUrl = (url) => {
   if (!url) return PLACEHOLDER_IMAGE_URL;
   if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
-  if (env.API_BASE_URL.startsWith('/')) return url;
-  return `${env.API_ORIGIN}${url}`;
+  // Files under /images and /brand are bundled with the frontend and must stay
+  // on the frontend origin. Only legacy /uploads paths belong to the API.
+  if (url.startsWith('/images/') || url.startsWith('/brand/')) return url;
+  if (url.startsWith('/uploads/') && !env.API_BASE_URL.startsWith('/')) return `${env.API_ORIGIN}${url}`;
+  return url;
 };
 
 const normalizeMoney = (value) => {
