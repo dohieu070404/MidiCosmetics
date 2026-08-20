@@ -7,6 +7,7 @@ const ok = (res, message, data = {}, meta = {}) => res.success({ statusCode: HTT
 export const publicController = {
   home: asyncHandler(async (req, res) => ok(res, 'Home data fetched successfully', await publicService.getHome())),
   homepage: asyncHandler(async (req, res) => ok(res, 'Homepage settings fetched successfully', await publicService.getHome())),
+  about: asyncHandler(async (req, res) => ok(res, 'About page content fetched successfully', await publicService.getAbout())),
   taxonomies: asyncHandler(async (req, res) => ok(res, 'Taxonomies fetched successfully', await publicService.getTaxonomies())),
 
   featuredBlogs: asyncHandler(async (req, res) => ok(res, 'Featured blogs fetched successfully', { blogs: await publicService.featuredBlogs() })),
@@ -25,4 +26,9 @@ export const publicController = {
   }),
   getProduct: asyncHandler(async (req, res) => ok(res, 'Product detail fetched successfully', await publicService.getProduct(req.validated.params.slug))),
   relatedProducts: asyncHandler(async (req, res) => ok(res, 'Related products fetched successfully', { products: await publicService.relatedProducts(req.validated.params.slug) })),
+  listCollections: asyncHandler(async (req, res) => {
+    const result = await publicService.listCollections(req.validated.query);
+    return ok(res, 'Collections fetched successfully', { collections: result.items }, result.pagination);
+  }),
+  getCollection: asyncHandler(async (req, res) => ok(res, 'Collection fetched successfully', await publicService.getCollection(req.validated.params.slug))),
 };

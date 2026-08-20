@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { CartDrawer } from "@/components/commerce/cart-drawer";
 
 export function MarketingLayout() {
   return (
@@ -11,6 +12,7 @@ export function MarketingLayout() {
         <Outlet />
       </main>
       <SiteFooter />
+      <CartDrawer />
     </div>
   );
 }

@@ -108,7 +108,9 @@ export const errorHandler = (error, req, res, next) => {
       method: req.method,
       url: req.originalUrl,
       statusCode,
-      err: normalizedError,
+      err: env.isProduction
+        ? { name: normalizedError.name, code: normalizedError.code, statusCode }
+        : normalizedError,
     },
     'Request failed'
   );

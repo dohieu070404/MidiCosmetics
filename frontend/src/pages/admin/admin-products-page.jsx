@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api/admin-api';
 import { ImageWithFallback } from '@/components/common/image-with-fallback';
+import { MediaPicker } from '@/components/admin/media-picker';
 import { validateLocalImageFiles } from '@/lib/media';
 import { ActionButton, AdminTable, DangerButton, FileInput, Notice, NumberInput, PageHeader, RequiredNote, SecondaryButton, SectionCard, SelectInput, StatusBadge, TabButtons, TextArea, TextInput, Toolbar, formatDate, formatMoney, normalizeIntegerInput, normalizeMoneyInput, toInputNumber } from './admin-shared';
 
 const initial = {
   name: '', sku: '', barcode: '', categoryUuid: '', brandUuid: '', skinType: '', shortDescription: '', description: '', benefits: '', caution: '', ingredients: '', howToUse: '',
   price: '', compareAtPrice: '', stock: '0', unit: '', currency: 'VND', status: 'DRAFT', isFeatured: false, featuredOrder: '0', images: [], imageUrlText: '',
+  collectionUuids: [],
 };
 
 const clean = (form) => ({
@@ -31,6 +33,7 @@ const clean = (form) => ({
   isFeatured: Boolean(form.isFeatured),
   featuredOrder: normalizeIntegerInput(form.featuredOrder) ?? 0,
   images: form.images || [],
+  collectionUuids: form.collectionUuids || [],
 });
 
 export function AdminProductsPage({ initialView = 'list' }) {
@@ -38,6 +41,7 @@ export function AdminProductsPage({ initialView = 'list' }) {
   const [items, setItems] = useState([]);
   const [cats, setCats] = useState([]);
   const [brands, setBrands] = useState([]);
+  const [collections, setCollections] = useState([]);
   const [form, setForm] = useState(initial);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState('');
@@ -46,6 +50,8 @@ export function AdminProductsPage({ initialView = 'list' }) {
   const [galleryFiles, setGalleryFiles] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [productScope, setProductScope] = useState('active');
+  const [selectedIds, setSelectedIds] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const [preview, setPreview] = useState(null);
@@ -54,36 +60,42 @@ export function AdminProductsPage({ initialView = 'list' }) {
   const [importResult, setImportResult] = useState(null);
 
   const load = async () => {
-    const [p, c, b, imports] = await Promise.all([
-      adminApi.listProducts({ limit: 100, search, status: statusFilter, categoryUuid: categoryFilter, brandUuid: brandFilter }),
+    const [p, c, b, collectionRes, imports] = await Promise.all([
+      adminApi.listProducts({ limit: 100, search, status: productScope === 'active' ? statusFilter : '', categoryUuid: categoryFilter, brandUuid: brandFilter, deleted: productScope }),
       adminApi.listProductCategories({ limit: 100 }),
       adminApi.listProductBrands({ limit: 100 }),
+      adminApi.listProductCollections({ limit: 100 }),
       adminApi.listImportJobs({ limit: 10 }),
     ]);
     setItems(p.data.products || []);
+    setSelectedIds([]);
     setCats(c.data.categories || []);
     setBrands(b.data.brands || []);
+    setCollections(collectionRes.data.collections || []);
     setLogs(imports.data.jobs || imports.data.imports || []);
   };
 
   useEffect(() => {
     let mounted = true;
     Promise.all([
-      adminApi.listProducts({ limit: 100, search, status: statusFilter, categoryUuid: categoryFilter, brandUuid: brandFilter }),
+      adminApi.listProducts({ limit: 100, search, status: productScope === 'active' ? statusFilter : '', categoryUuid: categoryFilter, brandUuid: brandFilter, deleted: productScope }),
       adminApi.listProductCategories({ limit: 100 }),
       adminApi.listProductBrands({ limit: 100 }),
+      adminApi.listProductCollections({ limit: 100 }),
       adminApi.listImportJobs({ limit: 10 }),
     ])
-      .then(([p, c, b, imports]) => {
+      .then(([p, c, b, collectionRes, imports]) => {
         if (!mounted) return;
         setItems(p.data.products || []);
+        setSelectedIds([]);
         setCats(c.data.categories || []);
         setBrands(b.data.brands || []);
+        setCollections(collectionRes.data.collections || []);
         setLogs(imports.data.jobs || imports.data.imports || []);
       })
       .catch((e) => { if (mounted) setError(e.message); });
     return () => { mounted = false; };
-  }, [search, statusFilter, categoryFilter, brandFilter]);
+  }, [search, statusFilter, categoryFilter, brandFilter, productScope]);
 
   const selectedImageCount = useMemo(() => (form.images?.length || 0) + galleryFiles.length, [form.images, galleryFiles]);
   const filePreviews = useMemo(() => galleryFiles.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })), [galleryFiles]);
@@ -125,6 +137,7 @@ export function AdminProductsPage({ initialView = 'list' }) {
       shortDescription: r.shortDescription || '', description: r.description || '', benefits: r.benefits || '', caution: r.caution || '', ingredients: r.ingredients || '', howToUse: r.howToUse || '',
       price: toInputNumber(r.price), compareAtPrice: toInputNumber(r.compareAtPrice), stock: String(r.stock ?? 0), unit: r.unit || '', currency: r.currency || 'VND', status: r.status || 'DRAFT', isFeatured: Boolean(r.isFeatured), featuredOrder: String(r.featuredOrder ?? 0),
       images: (r.images || []).map((img, index) => ({ mediaAssetUuid: img.mediaAsset?.uuid, url: img.mediaAsset?.secureUrl, altText: img.altText || r.name, sortOrder: img.sortOrder ?? index, isPrimary: img.isPrimary ?? index === 0 })).filter((img) => img.mediaAssetUuid || img.url),
+      collectionUuids: (r.collections || []).map((item) => item.collection?.uuid).filter(Boolean),
     });
     setView('manual'); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -197,6 +210,46 @@ export function AdminProductsPage({ initialView = 'list' }) {
     } catch (err) { setError(err.message || 'Không tải được file mẫu Excel.'); }
   };
 
+  const downloadInventory = async () => {
+    setError('');
+    try {
+      const blob = await adminApi.downloadInventoryExport();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `midi-kho-hang-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link); link.click(); link.remove(); window.URL.revokeObjectURL(url);
+      setOk('Đã xuất file Excel kho hàng hiện có.');
+    } catch (err) { setError(err.message || 'Không xuất được file Excel kho hàng.'); }
+  };
+
+  const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.uuid));
+  const toggleAll = () => setSelectedIds(allSelected ? [] : items.map((item) => item.uuid));
+  const toggleSelected = (uuid) => setSelectedIds((current) => current.includes(uuid) ? current.filter((item) => item !== uuid) : [...current, uuid]);
+  const archiveSelected = async (uuids = selectedIds) => {
+    if (!uuids.length || !window.confirm(`Chuyển ${uuids.length} sản phẩm vào thùng rác? Có thể khôi phục ở bước này.`)) return;
+    setLoading(true); setError(''); setOk('');
+    try { const response = await adminApi.archiveProductsBulk(uuids); setOk(`Đã lưu trữ ${response.data.archivedCount || 0} sản phẩm.`); await load(); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+  const restoreSelected = async (uuids = selectedIds) => {
+    if (!uuids.length) return;
+    setLoading(true); setError(''); setOk('');
+    try { const response = await adminApi.restoreProductsBulk(uuids); setOk(`Đã khôi phục ${response.data.restoredCount || 0} sản phẩm ở trạng thái tạm ẩn.`); await load(); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+  const permanentlyDeleteSelected = async (uuids = selectedIds) => {
+    if (!uuids.length) return;
+    if (!window.confirm(`Đây là lần xóa thứ hai của ${uuids.length} sản phẩm và không thể khôi phục. Snapshot trong phiếu cũ vẫn được giữ. Tiếp tục?`)) return;
+    if (window.prompt('Nhập XOA VINH VIEN để xác nhận') !== 'XOA VINH VIEN') { setError('Đã hủy vì nội dung xác nhận không khớp.'); return; }
+    setLoading(true); setError(''); setOk('');
+    try { const response = await adminApi.permanentlyDeleteProductsBulk(uuids); setOk(`Đã xóa vĩnh viễn ${response.data.deletedCount || 0} sản phẩm; lịch sử phiếu vẫn an toàn.`); await load(); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
   const previewRows = preview?.rows || [];
   const hasErrors = Boolean(preview?.errors?.length || previewRows.some((row) => row.errors?.length));
   const canConfirmImport = Boolean(preview?.importJobId && (preview?.validRows || 0) > 0);
@@ -206,7 +259,7 @@ export function AdminProductsPage({ initialView = 'list' }) {
   const duplicateCount = preview?.duplicateRows ?? previewRows.filter((row) => row.errors?.some((e) => e.code === 'DUPLICATE_IN_FILE')).length;
 
   return <div className="grid gap-6">
-    <PageHeader title={initialView === 'import' ? 'Import Excel Kiot' : 'Quản lý sản phẩm'} description="Quản lý sản phẩm, giá, tồn kho và bật/tắt sản phẩm đề xuất trang chủ ngay trong bảng." actions={<><SecondaryButton type="button" onClick={() => setView('list')}>Danh sách</SecondaryButton><ActionButton type="button" onClick={openCreate}>+ Thêm sản phẩm</ActionButton><SecondaryButton type="button" onClick={() => setView('import')}>Import Excel</SecondaryButton></>} />
+    <PageHeader title={initialView === 'import' ? 'Import Excel Kiot' : 'Quản lý sản phẩm'} description="Quản lý sản phẩm, giá, tồn kho và bật/tắt sản phẩm đề xuất trang chủ ngay trong bảng." actions={<><SecondaryButton type="button" onClick={downloadInventory}>Xuất Excel kho hàng</SecondaryButton><SecondaryButton type="button" onClick={() => setView('list')}>Danh sách</SecondaryButton><ActionButton type="button" onClick={openCreate}>+ Thêm sản phẩm</ActionButton><SecondaryButton type="button" onClick={() => setView('import')}>Import Excel</SecondaryButton></>} />
     <Notice>{error}</Notice><Notice type="success">{ok}</Notice>
     <TabButtons value={view} onChange={(next) => next === 'manual' && !editing ? openCreate() : setView(next)} items={[{ value: 'list', label: 'Danh sách' }, { value: 'manual', label: editing ? 'Sửa sản phẩm' : 'Thêm thủ công' }, { value: 'import', label: 'Import Excel' }]} />
 
@@ -246,11 +299,17 @@ export function AdminProductsPage({ initialView = 'list' }) {
             <NumberInput label="Thứ tự đề xuất" name="featuredOrder" value={form.featuredOrder} onChange={set} />
           </div>
           <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" name="isFeatured" checked={form.isFeatured} onChange={set} />Hiển thị ở trang chủ</label>
+          <fieldset className="mt-5 border-t border-border pt-4"><legend className="text-sm font-medium">Collections</legend><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{collections.map((collection) => <label key={collection.uuid} className="flex min-h-11 items-center gap-3 border border-border px-3 text-sm"><input type="checkbox" checked={form.collectionUuids.includes(collection.uuid)} onChange={(event) => setForm((current) => ({ ...current, collectionUuids: event.target.checked ? [...current.collectionUuids, collection.uuid] : current.collectionUuids.filter((uuid) => uuid !== collection.uuid) }))} />{collection.name}</label>)}</div></fieldset>
         </SectionCard>
 
         <SectionCard title="Hình ảnh">
           <div className="grid gap-4">
             <FileInput label="Tải ảnh lên" accept="image/png,image/jpeg,image/webp" multiple onChange={(e) => { const files = Array.from(e.target.files || []); const fileError = validateLocalImageFiles(files, 'Ảnh sản phẩm'); if (fileError) { setError(fileError); e.target.value = ''; setGalleryFiles([]); return; } setError(''); setGalleryFiles(files); }} hint={`${selectedImageCount} ảnh sẽ được lưu. Ảnh đầu tiên là ảnh chính. Mỗi ảnh tối đa 5MB.`} />
+            <div><MediaPicker label="Thêm ảnh từ thư viện" onSelect={(media) => setForm((current) => {
+              if (current.images.some((image) => image.mediaAssetUuid === media.uuid)) return current;
+              const index = current.images.length;
+              return { ...current, images: [...current.images, { mediaAssetUuid: media.uuid, url: media.secureUrl, altText: media.altText || current.name, sortOrder: index, isPrimary: index === 0 }] };
+            })} /></div>
             <TextArea label="Hoặc dán URL ảnh" name="imageUrlText" value={form.imageUrlText} onChange={set} hint="Mỗi dòng một link ảnh trực tiếp .jpg, .jpeg, .png hoặc .webp" />
             <div><SecondaryButton type="button" onClick={addUrlImages}>Thêm URL ảnh</SecondaryButton></div>
             {(form.images?.length || filePreviews.length) ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -319,9 +378,9 @@ export function AdminProductsPage({ initialView = 'list' }) {
       </SectionCard>
     </div> : null}
 
-    {view === 'list' ? <SectionCard title="Danh sách sản phẩm" description="Bật/tắt đề xuất trang chủ ngay trong bảng. Sản phẩm đang tạm ẩn hoặc lưu trữ sẽ không hiển thị ở public dù được đánh dấu đề xuất.">
-      <div className="grid gap-4"><Toolbar><TextInput label="Tìm kiếm" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tên, mã hàng..." /><SelectInput label="Trạng thái" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="">Tất cả</option><option value="DRAFT">Nháp</option><option value="ACTIVE">Hiển thị</option><option value="INACTIVE">Tạm ẩn</option><option value="ARCHIVED">Lưu trữ</option></SelectInput><SelectInput label="Danh mục" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}><option value="">Tất cả danh mục</option>{cats.map((c) => <option key={c.uuid} value={c.uuid}>{c.name}</option>)}</SelectInput><SelectInput label="Thương hiệu" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}><option value="">Tất cả thương hiệu</option>{brands.map((b) => <option key={b.uuid} value={b.uuid}>{b.name}</option>)}</SelectInput><div className="flex items-end"><ActionButton type="button" onClick={openCreate} className="w-full">+ Thêm sản phẩm</ActionButton></div><div className="flex items-end"><SecondaryButton type="button" onClick={() => setView('import')} className="w-full">Import Excel</SecondaryButton></div></Toolbar>
-      <AdminTable empty="Chưa có sản phẩm phù hợp bộ lọc." columns={[{ key: 'image', label: 'Ảnh', render: (r) => <ImageWithFallback src={r.images?.[0]?.mediaAsset?.secureUrl} alt={r.name} className="h-12 w-12 rounded-xl object-cover" /> }, { key: 'name', label: 'Tên sản phẩm' }, { key: 'sku', label: 'Mã hàng' }, { key: 'barcode', label: 'Mã vạch' }, { key: 'price', label: 'Giá', render: (r) => formatMoney(r.price, r.currency) }, { key: 'stock', label: 'Tồn kho', render: (r) => `${r.stock ?? 0}${r.unit ? ` ${r.unit}` : ''}` }, { key: 'category', label: 'Danh mục', render: (r) => r.category?.name || '-' }, { key: 'status', label: 'Trạng thái', render: (r) => <StatusBadge>{r.status}</StatusBadge> }, { key: 'featured', label: 'Đề xuất', render: (r) => r.isFeatured ? '★ Trang chủ' : '—' }]} rows={items} actions={(r) => <div className="flex flex-wrap gap-2"><SecondaryButton type="button" onClick={() => toggleFeatured(r)}>{r.isFeatured ? '★ Bỏ đề xuất' : '☆ Đề xuất'}</SecondaryButton><SecondaryButton type="button" onClick={() => edit(r)}>Sửa</SecondaryButton>{r.status === 'ACTIVE' ? <SecondaryButton type="button" onClick={() => adminApi.deactivateProduct(r.uuid).then(load)}>Ẩn</SecondaryButton> : <ActionButton type="button" onClick={() => adminApi.activateProduct(r.uuid).then(load)}>Hiển thị</ActionButton>}<DangerButton type="button" onClick={() => confirm('Xóa sản phẩm này?') && adminApi.deleteProduct(r.uuid).then(load)}>Xóa</DangerButton></div>} /></div>
+    {view === 'list' ? <SectionCard title={productScope === 'trashed' ? 'Thùng rác sản phẩm' : 'Danh sách sản phẩm'} description={productScope === 'trashed' ? 'Có thể khôi phục hoặc xóa vĩnh viễn lần hai. Lịch sử và snapshot phiếu cũ vẫn được giữ.' : 'Xóa lần đầu chỉ chuyển sản phẩm vào thùng rác và vẫn có thể khôi phục.'} actions={<div className="flex flex-wrap gap-2">{productScope === 'trashed' ? <><SecondaryButton type="button" disabled={!selectedIds.length || loading} onClick={() => restoreSelected()}>Khôi phục ({selectedIds.length})</SecondaryButton><DangerButton type="button" disabled={!selectedIds.length || loading} onClick={() => permanentlyDeleteSelected()}>Xóa vĩnh viễn ({selectedIds.length})</DangerButton></> : <DangerButton type="button" disabled={!selectedIds.length || loading} onClick={() => archiveSelected()}>Xóa đã chọn ({selectedIds.length})</DangerButton>}</div>}>
+      <div className="grid gap-4"><Toolbar><TextInput label="Tìm kiếm" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tên, mã hàng..." /><SelectInput label="Kho sản phẩm" value={productScope} onChange={(e) => setProductScope(e.target.value)}><option value="active">Đang quản lý</option><option value="trashed">Thùng rác</option></SelectInput><SelectInput label="Trạng thái" value={statusFilter} disabled={productScope === 'trashed'} onChange={(e) => setStatusFilter(e.target.value)}><option value="">Tất cả</option><option value="DRAFT">Nháp</option><option value="ACTIVE">Hiển thị</option><option value="INACTIVE">Tạm ẩn</option><option value="ARCHIVED">Lưu trữ</option></SelectInput><SelectInput label="Danh mục" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}><option value="">Tất cả danh mục</option>{cats.map((c) => <option key={c.uuid} value={c.uuid}>{c.name}</option>)}</SelectInput><SelectInput label="Thương hiệu" value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}><option value="">Tất cả thương hiệu</option>{brands.map((b) => <option key={b.uuid} value={b.uuid}>{b.name}</option>)}</SelectInput><div className="flex items-end"><SecondaryButton type="button" onClick={downloadInventory} className="w-full">Xuất Excel kho</SecondaryButton></div></Toolbar>
+      <AdminTable empty="Chưa có sản phẩm phù hợp bộ lọc." columns={[{ key: 'select', label: <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Chọn tất cả sản phẩm" />, render: (r) => <input type="checkbox" checked={selectedIds.includes(r.uuid)} onChange={() => toggleSelected(r.uuid)} aria-label={`Chọn ${r.name}`} /> }, { key: 'image', label: 'Ảnh', render: (r) => <ImageWithFallback src={r.images?.[0]?.mediaAsset?.secureUrl} alt={r.name} className="h-12 w-12 rounded-xl object-cover" /> }, { key: 'name', label: 'Tên sản phẩm' }, { key: 'sku', label: 'Mã hàng' }, { key: 'barcode', label: 'Mã vạch' }, { key: 'price', label: 'Giá', render: (r) => formatMoney(r.price, r.currency) }, { key: 'stock', label: 'Tồn kho', render: (r) => `${r.stock ?? 0}${r.unit ? ` ${r.unit}` : ''}` }, { key: 'category', label: 'Danh mục', render: (r) => r.category?.name || '-' }, { key: 'status', label: 'Trạng thái', render: (r) => <StatusBadge>{r.status}</StatusBadge> }, { key: 'featured', label: 'Đề xuất', render: (r) => r.isFeatured ? '★ Trang chủ' : '—' }]} rows={items} actions={(r) => productScope === 'trashed' ? <div className="flex flex-wrap gap-2"><SecondaryButton type="button" onClick={() => restoreSelected([r.uuid])}>Khôi phục</SecondaryButton><DangerButton type="button" onClick={() => permanentlyDeleteSelected([r.uuid])}>Xóa lần 2</DangerButton></div> : <div className="flex flex-wrap gap-2"><SecondaryButton type="button" onClick={() => toggleFeatured(r)}>{r.isFeatured ? '★ Bỏ đề xuất' : '☆ Đề xuất'}</SecondaryButton><SecondaryButton type="button" onClick={() => edit(r)}>Sửa</SecondaryButton>{r.status === 'ACTIVE' ? <SecondaryButton type="button" onClick={() => adminApi.deactivateProduct(r.uuid).then(load)}>Ẩn</SecondaryButton> : <ActionButton type="button" onClick={() => adminApi.activateProduct(r.uuid).then(load)}>Hiển thị</ActionButton>}<DangerButton type="button" onClick={() => archiveSelected([r.uuid])}>Xóa lần 1</DangerButton></div>} /></div>
     </SectionCard> : null}
   </div>;
 }

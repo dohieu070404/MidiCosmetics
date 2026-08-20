@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 const initialState = {
   user: null,
@@ -7,24 +6,19 @@ const initialState = {
   permissions: [],
 };
 
-export const useAuthStore = create(
-  persist(
-    (set, get) => ({
-      ...initialState,
-      setSession: ({ user, tokens }) =>
-        set({
-          user,
-          accessToken: tokens?.accessToken ?? null,
-          permissions: user?.permissions ?? [],
-        }),
-      updateAccessToken: (accessToken) => set({ accessToken }),
-      logout: () => set(initialState),
-      isAuthenticated: () => Boolean(get().accessToken && get().user),
-      isAdmin: () => get().user?.role === "ADMIN",
+// Access tokens intentionally live in memory only. The HttpOnly refresh cookie
+// restores the session after a reload, so an XSS cannot steal a persisted token
+// from localStorage/sessionStorage.
+export const useAuthStore = create((set, get) => ({
+  ...initialState,
+  setSession: ({ user, tokens }) =>
+    set({
+      user,
+      accessToken: tokens?.accessToken ?? null,
+      permissions: user?.permissions ?? [],
     }),
-    {
-      name: "midi-auth-session",
-      partialize: (state) => ({ user: state.user, accessToken: state.accessToken, permissions: state.permissions }),
-    }
-  )
-);
+  updateAccessToken: (accessToken) => set({ accessToken }),
+  logout: () => set(initialState),
+  isAuthenticated: () => Boolean(get().accessToken && get().user),
+  isAdmin: () => get().user?.role === "ADMIN",
+}));

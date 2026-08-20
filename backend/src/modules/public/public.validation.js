@@ -5,12 +5,14 @@ const safeSlug = z.string().trim().min(1).max(191).regex(/^[a-z0-9]+(?:-[a-z0-9]
 const safeTaxonomySlug = z.string().trim().max(191).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/i, 'Slug không hợp lệ').optional();
 const tagList = z.string().trim().max(300).refine((value) => value.split(',').every((tag) => !tag.trim() || /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(tag.trim())), 'Danh sách tag không hợp lệ').optional();
 const publicSort = z.enum(['latest', 'popular', 'price_asc', 'price_desc', 'name_asc']).optional().default('latest');
+const productGroup = z.enum(['skincare', 'makeup', 'body-hair', 'fragrance', 'accessories']).optional();
 
 const pagination = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(60).default(12),
   search: safeSearch,
   category: safeTaxonomySlug,
+  group: productGroup,
   brand: safeTaxonomySlug,
   tags: tagList,
   sort: publicSort,

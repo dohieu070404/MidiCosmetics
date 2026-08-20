@@ -8,7 +8,7 @@ export function TextInput({ label, hint, className = '', required, ...props }) {
   return (
     <label className={`grid gap-2 text-sm font-medium ${className}`}>
       <LabelText label={label} required={required} />
-      <input {...props} required={required} className="min-h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-60" />
+      <input {...props} required={required} className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition duration-200 focus:border-primary focus:shadow-[0_0_0_3px_rgba(126,74,62,0.08)] disabled:cursor-not-allowed disabled:opacity-60" />
       {hint ? <span className="text-xs font-normal text-muted-foreground">{hint}</span> : null}
     </label>
   );
@@ -22,7 +22,7 @@ export function SelectInput({ label, hint, children, className = '', required, .
   return (
     <label className={`grid gap-2 text-sm font-medium ${className}`}>
       <LabelText label={label} required={required} />
-      <select {...props} required={required} className="min-h-11 w-full rounded-2xl border border-input bg-background px-4 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-60">
+      <select {...props} required={required} className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition duration-200 focus:border-primary focus:shadow-[0_0_0_3px_rgba(126,74,62,0.08)] disabled:cursor-not-allowed disabled:opacity-60">
         {children}
       </select>
       {hint ? <span className="text-xs font-normal text-muted-foreground">{hint}</span> : null}
@@ -34,7 +34,7 @@ export function TextArea({ label, hint, className = '', required, ...props }) {
   return (
     <label className={`grid gap-2 text-sm font-medium ${className}`}>
       <LabelText label={label} required={required} />
-      <textarea {...props} required={required} className="min-h-28 w-full resize-y rounded-2xl border border-input bg-background px-4 py-3 text-sm leading-7 outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 break-words" />
+      <textarea {...props} required={required} className="min-h-28 w-full resize-y break-words rounded-lg border border-input bg-background px-3 py-3 text-sm leading-7 outline-none transition duration-200 focus:border-primary focus:shadow-[0_0_0_3px_rgba(126,74,62,0.08)] disabled:cursor-not-allowed disabled:opacity-60" />
       {hint ? <span className="text-xs font-normal text-muted-foreground">{hint}</span> : null}
     </label>
   );
@@ -44,19 +44,19 @@ export function FileInput({ label, hint, ...props }) {
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <input {...props} type="file" className="w-full rounded-2xl border border-input bg-background p-3 text-sm file:mr-3 file:rounded-full file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium" />
+      <input {...props} type="file" className="w-full rounded-lg border border-dashed border-input bg-background p-3 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium" />
       {hint ? <span className="text-xs font-normal text-muted-foreground">{hint}</span> : null}
     </label>
   );
 }
 
 export function RequiredNote() {
-  return <p className="rounded-2xl bg-secondary/50 px-4 py-3 text-sm text-muted-foreground"><span className="font-semibold text-destructive">*</span> là thông tin bắt buộc.</p>;
+  return <p className="rounded-r-xl border-l-2 border-primary bg-secondary/50 px-4 py-3 text-sm text-muted-foreground"><span className="font-semibold text-destructive">*</span> là thông tin bắt buộc.</p>;
 }
 
 export function AdminTable({ columns, rows = [], actions, empty = 'Chưa có dữ liệu', rowClassName }) {
   return (
-    <div className="max-w-full overflow-x-auto rounded-3xl border border-border bg-background">
+    <div className="max-w-full overflow-x-auto rounded-xl border border-border bg-background">
       <table className="min-w-[48rem] w-full text-sm">
         <thead className="bg-secondary/60 text-left">
           <tr>
@@ -66,7 +66,7 @@ export function AdminTable({ columns, rows = [], actions, empty = 'Chưa có d�
         </thead>
         <tbody>
           {rows.length ? rows.map((row) => (
-            <tr key={row.uuid || row.id || row.rowNumber} className={`border-t border-border ${rowClassName ? rowClassName(row) : ''}`}>
+            <tr key={row.uuid || row.id || row.rowNumber} className={`border-t border-border transition-colors hover:bg-secondary/25 ${rowClassName ? rowClassName(row) : ''}`}>
               {columns.map((column) => <td key={column.key} className="max-w-[22rem] break-words px-4 py-3 align-top">{column.render ? column.render(row) : row[column.key] ?? '-'}</td>)}
               {actions ? <td className="px-4 py-3 align-top">{actions(row)}</td> : null}
             </tr>
@@ -83,7 +83,7 @@ export function PageHeader({ title, description, actions }) {
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
+        <p className="midi-eyebrow mb-2">Midi studio</p><h2 className="font-display text-3xl font-normal tracking-tight sm:text-4xl">{title}</h2>
         {description ? <p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -92,24 +92,24 @@ export function PageHeader({ title, description, actions }) {
 }
 
 export function ActionButton({ className = '', ...props }) {
-  return <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-2xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} />;
+  return <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-primary-foreground transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 ${className}`} />;
 }
 export function SecondaryButton({ className = '', ...props }) {
-  return <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-2xl border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50 ${className}`} />;
+  return <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition duration-200 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 ${className}`} />;
 }
 export function DangerButton({ className = '', ...props }) {
-  return <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-2xl border border-destructive/30 bg-background px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} />;
+  return <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-lg border border-destructive/30 bg-background px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} />;
 }
 
 export function Notice({ type = 'error', children }) {
   if (!children) return null;
   const cls = type === 'success' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : type === 'info' ? 'border-primary/20 bg-primary/10 text-primary' : 'border-destructive/20 bg-destructive/10 text-destructive';
-  return <div className={`rounded-2xl border p-3 text-sm leading-6 ${cls}`}>{children}</div>;
+  return <div className={`rounded-xl border p-3 text-sm leading-6 ${cls}`}>{children}</div>;
 }
 
 export function SectionCard({ title, description, children, actions, className = '' }) {
   return (
-    <section className={`rounded-3xl border border-border bg-background p-4 shadow-sm sm:p-5 ${className}`}>
+    <section className={`rounded-2xl border border-border bg-background p-4 shadow-sm sm:p-5 ${className}`}>
       {(title || description || actions) ? (
         <div className="mb-5 flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -125,7 +125,7 @@ export function SectionCard({ title, description, children, actions, className =
 }
 
 export function TabButtons({ value, onChange, items }) {
-  return <div className="flex gap-2 overflow-x-auto rounded-3xl border border-border bg-secondary/40 p-2 sm:flex-wrap sm:overflow-visible">{items.map((item) => <button key={item.value} type="button" onClick={() => onChange(item.value)} className={`whitespace-nowrap rounded-2xl px-4 py-2 text-sm font-medium transition-colors ${value === item.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'}`}>{item.label}</button>)}</div>;
+  return <div className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-secondary/40 p-1 sm:flex-wrap sm:overflow-visible">{items.map((item) => <button key={item.value} type="button" onClick={() => onChange(item.value)} className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors ${value === item.value ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'}`}>{item.label}</button>)}</div>;
 }
 
 const STATUS_LABELS = {
@@ -144,14 +144,18 @@ const STATUS_LABELS = {
   NEW: 'Tạo mới',
   UPDATE: 'Cập nhật',
   WARNING: 'Cảnh báo',
+  CREATED: 'Mới tạo',
+  MESSENGER_OPENED: 'Đã mở Messenger',
+  PROCESSED: 'Đã xử lý',
+  EXPIRED: 'Hết hạn',
   DUPLICATE_IN_FILE: 'Trùng SKU',
   SKIPPED: 'Bỏ qua',
 };
 
 export function StatusBadge({ children }) {
   const value = String(children || '').toUpperCase();
-  const positive = ['ACTIVE', 'PUBLISHED', 'VISIBLE', 'COMPLETED', 'SUCCESS', 'VALID', 'NEW', 'UPDATE'];
-  const negative = ['INACTIVE', 'FAILED', 'SPAM', 'HIDDEN', 'ARCHIVED', 'INVALID', 'DUPLICATE_IN_FILE', 'SKIPPED'];
+  const positive = ['ACTIVE', 'PUBLISHED', 'VISIBLE', 'COMPLETED', 'SUCCESS', 'VALID', 'NEW', 'UPDATE', 'PROCESSED'];
+  const negative = ['INACTIVE', 'FAILED', 'SPAM', 'HIDDEN', 'ARCHIVED', 'INVALID', 'DUPLICATE_IN_FILE', 'SKIPPED', 'EXPIRED'];
   const cls = positive.includes(value)
     ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
     : negative.includes(value)
@@ -161,7 +165,7 @@ export function StatusBadge({ children }) {
 }
 
 export function Toolbar({ children }) {
-  return <div className="grid gap-3 rounded-3xl border border-border bg-secondary/30 p-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>;
+  return <div className="grid gap-3 rounded-xl border border-border bg-secondary/30 p-4 sm:grid-cols-2 xl:grid-cols-3">{children}</div>;
 }
 
 export const formatDate = (value) => value ? new Date(value).toLocaleString('vi-VN') : '-';

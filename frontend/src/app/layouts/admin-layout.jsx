@@ -55,22 +55,22 @@ export function AdminLayout() {
   if (!accessToken || user?.role !== 'ADMIN') return <Navigate to={ROUTE_PATHS.adminLogin} replace state={{ from: location }} />;
 
   return (
-    <div className="min-h-dvh bg-secondary/30">
-      <div className="grid min-h-dvh lg:grid-cols-[17rem_minmax(0,1fr)]">
+    <div className="min-h-dvh bg-[#f4eee7]">
+      <div className="grid min-h-dvh lg:grid-cols-[17.5rem_minmax(0,1fr)]">
         <AdminSidebar />
-        <main className="min-w-0 p-3 sm:p-5 lg:p-8">
-          <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.5rem] border border-border bg-background p-3 shadow-sm sm:rounded-[2rem] sm:p-5 lg:p-8">
-            <div className="mb-6 flex flex-col gap-4 border-b border-border pb-5">
+        <main className="min-w-0 p-3 sm:p-5 lg:p-8 xl:p-10">
+          <div className="mx-auto max-w-[92rem] bg-background p-4 shadow-[0_20px_80px_rgba(57,43,37,0.08)] sm:p-6 lg:p-9">
+            <div className="mb-8 flex flex-col gap-4 border-b border-border pb-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Quản trị</p>
-                  <h1 className="font-display text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Midi Cosmetics</h1>
+                  <p className="midi-eyebrow">Quản trị nội dung & tư vấn</p>
+                  <h1 className="font-display text-2xl font-normal tracking-tight text-foreground sm:text-3xl">Midi Cosmetics</h1>
                   <p className="text-sm text-muted-foreground">{user.fullName} · Admin</p>
                 </div>
-                <button type="button" onClick={logout} className="w-fit rounded-2xl border border-border px-4 py-2 text-sm font-medium hover:bg-secondary lg:hidden">Đăng xuất</button>
+                <button type="button" onClick={logout} className="w-fit border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] hover:bg-secondary lg:hidden">Đăng xuất</button>
               </div>
               <nav className="flex snap-x gap-2 overflow-x-auto pb-2 lg:hidden" aria-label="Điều hướng quản trị trên di động">
-                {ADMIN_NAVIGATION.map((item) => <Link key={item.href} to={item.href} className="snap-start whitespace-nowrap rounded-full border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-secondary">{item.label}</Link>)}
+                {ADMIN_NAVIGATION.map((item) => <Link key={item.href} to={item.href} className="snap-start whitespace-nowrap border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-secondary">{item.label}</Link>)}
               </nav>
             </div>
             <Outlet />

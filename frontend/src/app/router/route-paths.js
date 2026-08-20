@@ -8,8 +8,12 @@ export const ROUTE_PATHS = Object.freeze({
   blogDetail: (slug) => `/blog/${slug}`,
   products: "/products",
   productDetail: (slug) => `/products/${slug}`,
+  collections: "/collections",
+  collectionDetail: (slug) => `/collections/${slug}`,
+  cart: "/cart",
+  quote: (token) => `/quote/${token}`,
   about: "/about",
-  adminComingSoon: "/admin",
+  contact: "/contact",
   adminLogin: adminLoginPath,
   adminDashboard: "/admin/dashboard",
   admin: "/admin/dashboard",
@@ -20,6 +24,12 @@ export const ROUTE_PATHS = Object.freeze({
   adminNotificationRecipients: "/admin/notification-recipients",
   adminHomeSettings: "/admin/homepage",
   adminTaxonomies: "/admin/taxonomies",
+  adminCollections: "/admin/collections",
+  adminMedia: "/admin/media",
+  adminQuotes: "/admin/quotes",
+  adminInterestAnalytics: "/admin/interest-analytics",
+  adminEmailLogs: "/admin/email-logs",
+  adminAuditLogs: "/admin/audit-logs",
 });
 
 export const routePathToRouterPath = (path) => String(path || "").replace(/^\/+/, "");

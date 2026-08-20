@@ -1,4 +1,3 @@
-# Local development override.
-# Database is NOT started by Docker anymore.
-# Backend connects directly to Supabase using backend/.env.
+# Optional local override file.
+# The base docker-compose.yml already runs PostgreSQL, backend and frontend locally.
 services: {}

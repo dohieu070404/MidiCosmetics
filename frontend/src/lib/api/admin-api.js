@@ -1,7 +1,11 @@
 import { apiClient } from "@/lib/http/api-client";
 import { API_ENDPOINTS } from "@/constants/api";
 
-const q = (params = {}) => ({ params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "" && v !== undefined && v !== null)) });
+const q = (params = {}) => ({
+  params: Object.fromEntries(Object.entries(params)
+    .filter(([, value]) => value !== "" && value !== undefined && value !== null)
+    .map(([key, value]) => [key, key === 'to' && /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T23:59:59.999` : value])),
+});
 
 export const authApi = {
   login: (payload) => apiClient.post(API_ENDPOINTS.auth.login, payload),
@@ -23,8 +27,6 @@ export const adminApi = {
   sendNotificationRecipientTest: () => apiClient.post(API_ENDPOINTS.admin.testNotificationRecipients),
   getHomepageSettings: () => apiClient.get(API_ENDPOINTS.admin.homeSettings),
   updateHomepageSection: (id, payload) => apiClient.put(API_ENDPOINTS.admin.homepageSection(id), payload),
-  toggleHomepageSection: (id, payload = {}) => apiClient.patch(API_ENDPOINTS.admin.homepageSectionToggle(id), payload),
-  reorderHomepageSections: (payload) => apiClient.patch(API_ENDPOINTS.admin.homepageSectionsReorder, payload),
   addHomepageFeaturedItem: (sectionId, payload) => apiClient.post(API_ENDPOINTS.admin.homepageSectionItems(sectionId), payload),
   removeHomepageFeaturedItem: (sectionId, itemId) => apiClient.delete(API_ENDPOINTS.admin.homepageSectionItem(sectionId, itemId)),
   listBlogCategories: (params) => apiClient.get(API_ENDPOINTS.admin.blogCategories, q(params)),
@@ -53,10 +55,16 @@ export const adminApi = {
   updateProductBrand: (uuid, payload) => apiClient.patch(`${API_ENDPOINTS.admin.productBrands}/${uuid}`, payload),
   deleteProductBrand: (uuid) => apiClient.delete(`${API_ENDPOINTS.admin.productBrands}/${uuid}`),
   listProductCollections: (params) => apiClient.get(API_ENDPOINTS.admin.productCollections, q(params)),
+  getProductCollection: (uuid) => apiClient.get(`${API_ENDPOINTS.admin.productCollections}/${uuid}`),
   createProductCollection: (payload) => apiClient.post(API_ENDPOINTS.admin.productCollections, payload),
   updateProductCollection: (uuid, payload) => apiClient.patch(`${API_ENDPOINTS.admin.productCollections}/${uuid}`, payload),
+  updateProductCollectionItems: (uuid, items) => apiClient.put(`${API_ENDPOINTS.admin.productCollections}/${uuid}/products`, { items }),
   deleteProductCollection: (uuid) => apiClient.delete(`${API_ENDPOINTS.admin.productCollections}/${uuid}`),
   listProducts: (params) => apiClient.get(API_ENDPOINTS.admin.products, q(params)),
+  downloadInventoryExport: () => apiClient.get(API_ENDPOINTS.admin.inventoryExport, { responseType: "blob", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } }),
+  archiveProductsBulk: (uuids) => apiClient.patch(API_ENDPOINTS.admin.productBulkArchive, { uuids }),
+  restoreProductsBulk: (uuids) => apiClient.patch(API_ENDPOINTS.admin.productBulkRestore, { uuids }),
+  permanentlyDeleteProductsBulk: (uuids) => apiClient.delete(API_ENDPOINTS.admin.productBulkPermanentDelete, { data: { uuids, confirmation: 'XOA VINH VIEN' } }),
   createProduct: (payload) => apiClient.post(API_ENDPOINTS.admin.products, payload),
   updateProduct: (uuid, payload) => apiClient.patch(`${API_ENDPOINTS.admin.products}/${uuid}`, payload),
   updateProductFeatured: (uuid, payload) => apiClient.patch(`${API_ENDPOINTS.admin.products}/${uuid}/featured`, payload),
@@ -68,9 +76,21 @@ export const adminApi = {
 
   listMedia: (params) => apiClient.get(API_ENDPOINTS.admin.media, q(params)),
   uploadImage: (formData) => apiClient.post(`${API_ENDPOINTS.admin.media}/images`, formData, { headers: { "Content-Type": "multipart/form-data" } }),
+  updateMedia: (uuid, payload) => apiClient.patch(`${API_ENDPOINTS.admin.media}/${uuid}`, payload),
+  deleteMedia: (uuid) => apiClient.delete(`${API_ENDPOINTS.admin.media}/${uuid}`),
   previewProductImport: (formData) => apiClient.post(API_ENDPOINTS.admin.previewProductImport, formData, { headers: { "Content-Type": "multipart/form-data" } }),
   confirmProductImport: (uuid) => apiClient.post(API_ENDPOINTS.admin.confirmProductImport(uuid)),
   importProducts: (formData) => apiClient.post(API_ENDPOINTS.admin.importProducts, formData, { headers: { "Content-Type": "multipart/form-data" } }),
   listImportJobs: (params) => apiClient.get(API_ENDPOINTS.admin.importJobs, q(params)),
   downloadProductImportTemplate: () => apiClient.get(API_ENDPOINTS.admin.productImportTemplate, { responseType: "blob", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } }),
+  listQuotes: (params) => apiClient.get(API_ENDPOINTS.admin.quotes, q(params)),
+  getQuote: (uuid) => apiClient.get(API_ENDPOINTS.admin.quote(uuid)),
+  updateQuoteStatus: (uuid, status) => apiClient.patch(API_ENDPOINTS.admin.quoteStatus(uuid), { status }),
+  archiveQuotes: (payload) => apiClient.patch(API_ENDPOINTS.admin.quoteArchive, payload),
+  restoreQuotes: (payload) => apiClient.patch(API_ENDPOINTS.admin.quoteRestore, payload),
+  interestAnalytics: (params) => apiClient.get(API_ENDPOINTS.admin.interestAnalytics, q(params)),
+  listEmailLogs: (params) => apiClient.get(API_ENDPOINTS.admin.emailLogs, q(params)),
+  listAuditLogs: (params) => apiClient.get(API_ENDPOINTS.admin.auditLogs, q(params)),
+  listSettings: (params) => apiClient.get(API_ENDPOINTS.admin.settings, q(params)),
+  upsertSetting: (payload) => apiClient.put(API_ENDPOINTS.admin.settings, payload),
 };

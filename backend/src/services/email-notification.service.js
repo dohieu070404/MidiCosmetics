@@ -20,7 +20,7 @@ const safeError = (error) => ({
   code: error?.code,
   command: error?.command,
   responseCode: error?.responseCode,
-  message: error?.message,
+  message: env.isProduction ? '[REDACTED_IN_PRODUCTION]' : error?.message,
 });
 
 const getTransporter = () => {
@@ -41,6 +41,10 @@ const getTransporter = () => {
     auth: env.email.smtpUser && env.email.smtpPass
       ? { user: env.email.smtpUser, pass: env.email.smtpPass }
       : undefined,
+    // Email templates are generated in memory. Prevent Nodemailer from ever
+    // resolving local files or remote URLs if template data is compromised.
+    disableFileAccess: true,
+    disableUrlAccess: true,
   });
   return transporter;
 };
@@ -98,12 +102,26 @@ const sendTemplateToEmail = async ({ to, type, rows, title }) => {
   }
 
   try {
-    await mailer.sendMail({ from: env.email.mailFrom, to, subject, text, html });
+    await mailer.sendMail({
+      from: env.email.mailFrom,
+      to,
+      subject,
+      text,
+      html,
+      disableFileAccess: true,
+      disableUrlAccess: true,
+    });
     await createEmailLog({ type, to, subject, status: 'SENT' });
     return { ok: true };
   } catch (error) {
     logger.warn({ subject, to, error: safeError(error) }, 'Unable to send email notification');
-    await createEmailLog({ type, to, subject, status: 'FAILED', errorMessage: error?.message || 'Unknown SMTP error' });
+    await createEmailLog({
+      type,
+      to,
+      subject,
+      status: 'FAILED',
+      errorMessage: env.isProduction ? (error?.code || 'SMTP_SEND_FAILED') : (error?.message || 'Unknown SMTP error'),
+    });
     return { ok: false, reason: 'SMTP_SEND_FAILED', error };
   }
 };

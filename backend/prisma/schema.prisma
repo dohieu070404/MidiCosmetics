@@ -57,14 +57,31 @@ enum SettingType {
   JSON
 }
 
+enum QuoteStatus {
+  CREATED
+  MESSENGER_OPENED
+  PROCESSED
+  EXPIRED
+}
+
+enum InterestEventType {
+  PRODUCT_VIEWED
+  ADDED_TO_CART
+  REMOVED_FROM_CART
+  QUANTITY_CHANGED
+  INCLUDED_IN_QUOTE
+  QUOTE_CREATED
+  MESSENGER_CLICKED
+}
+
 model User {
   id                BigInt     @id @default(autoincrement()) @map("id")
-  uuid              String     @unique @default(uuid()) @db.Char(36) @map("uuid")
-  email             String     @unique @db.VarChar(191) @map("email")
-  passwordHash      String     @db.VarChar(255) @map("password_hash")
-  fullName          String     @db.VarChar(150) @map("full_name")
-  phone             String?    @db.VarChar(30) @map("phone")
-  avatarUrl         String?    @db.VarChar(500) @map("avatar_url")
+  uuid              String     @unique @default(uuid()) @map("uuid") @db.Char(36)
+  email             String     @unique @map("email") @db.VarChar(191)
+  passwordHash      String     @map("password_hash") @db.VarChar(255)
+  fullName          String     @map("full_name") @db.VarChar(150)
+  phone             String?    @map("phone") @db.VarChar(30)
+  avatarUrl         String?    @map("avatar_url") @db.VarChar(500)
   role              UserRole   @default(USER) @map("role")
   status            UserStatus @default(ACTIVE) @map("status")
   emailVerifiedAt   DateTime?  @map("email_verified_at")
@@ -77,11 +94,11 @@ model User {
   refreshTokens           RefreshToken[]
   adminVerificationTokens AdminVerificationToken[]
   posts                   BlogPost[]
-  blogLikes     BlogLike[]
-  comments      Comment[]
-  importJobs    ImportJob[]
-  mediaAssets   MediaAsset[]
-  auditLogs     AuditLog[]
+  blogLikes               BlogLike[]
+  comments                Comment[]
+  importJobs              ImportJob[]
+  mediaAssets             MediaAsset[]
+  auditLogs               AuditLog[]
 
   @@index([role], map: "idx_users_role")
   @@index([status], map: "idx_users_status")
@@ -92,11 +109,11 @@ model User {
 
 model RefreshToken {
   id        BigInt    @id @default(autoincrement()) @map("id")
-  uuid      String    @unique @db.Char(36) @map("uuid")
+  uuid      String    @unique @map("uuid") @db.Char(36)
   userId    BigInt    @map("user_id")
-  tokenHash String    @unique @db.Char(64) @map("token_hash")
-  userAgent String?   @db.VarChar(500) @map("user_agent")
-  ipAddress String?   @db.VarChar(64) @map("ip_address")
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  userAgent String?   @map("user_agent") @db.VarChar(500)
+  ipAddress String?   @map("ip_address") @db.VarChar(64)
   expiresAt DateTime  @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
   createdAt DateTime  @default(now()) @map("created_at")
@@ -112,12 +129,12 @@ model RefreshToken {
 
 model AdminVerificationToken {
   id                  BigInt    @id @default(autoincrement()) @map("id")
-  uuid                String    @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid                String    @unique @default(uuid()) @map("uuid") @db.Char(36)
   adminId             BigInt    @map("admin_id")
-  type                String    @db.VarChar(80) @map("type")
-  tokenHash           String    @unique @db.Char(64) @map("token_hash")
-  pendingPasswordHash String?   @db.VarChar(255) @map("pending_password_hash")
-  targetEmail         String?   @db.VarChar(191) @map("target_email")
+  type                String    @map("type") @db.VarChar(80)
+  tokenHash           String    @unique @map("token_hash") @db.Char(64)
+  pendingPasswordHash String?   @map("pending_password_hash") @db.VarChar(255)
+  targetEmail         String?   @map("target_email") @db.VarChar(191)
   expiresAt           DateTime  @map("expires_at")
   usedAt              DateTime? @map("used_at")
   createdAt           DateTime  @default(now()) @map("created_at")
@@ -133,8 +150,8 @@ model AdminVerificationToken {
 
 model NotificationRecipient {
   id         BigInt    @id @default(autoincrement()) @map("id")
-  uuid       String    @unique @default(uuid()) @db.Char(36) @map("uuid")
-  email      String    @unique @db.VarChar(191) @map("email")
+  uuid       String    @unique @default(uuid()) @map("uuid") @db.Char(36)
+  email      String    @unique @map("email") @db.VarChar(191)
   isVerified Boolean   @default(false) @map("is_verified")
   verifiedAt DateTime? @map("verified_at")
   isActive   Boolean   @default(true) @map("is_active")
@@ -149,12 +166,12 @@ model NotificationRecipient {
 
 model EmailLog {
   id           BigInt   @id @default(autoincrement()) @map("id")
-  uuid         String   @unique @default(uuid()) @db.Char(36) @map("uuid")
-  type         String   @db.VarChar(100) @map("type")
-  to           String   @db.VarChar(191) @map("to_email")
-  subject      String   @db.VarChar(255) @map("subject")
-  status       String   @db.VarChar(40) @map("status")
-  errorMessage String?  @db.VarChar(500) @map("error_message")
+  uuid         String   @unique @default(uuid()) @map("uuid") @db.Char(36)
+  type         String   @map("type") @db.VarChar(100)
+  to           String   @map("to_email") @db.VarChar(191)
+  subject      String   @map("subject") @db.VarChar(255)
+  status       String   @map("status") @db.VarChar(40)
+  errorMessage String?  @map("error_message") @db.VarChar(500)
   createdAt    DateTime @default(now()) @map("created_at")
 
   @@index([type], map: "idx_email_logs_type")
@@ -165,18 +182,18 @@ model EmailLog {
 
 model MediaAsset {
   id           BigInt        @id @default(autoincrement()) @map("id")
-  uuid         String        @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid         String        @unique @default(uuid()) @map("uuid") @db.Char(36)
   uploaderId   BigInt?       @map("uploader_id")
   provider     MediaProvider @default(LOCAL) @map("provider")
-  publicId     String?       @db.VarChar(255) @map("public_id")
-  originalName String        @db.VarChar(255) @map("original_name")
-  fileName     String?       @db.VarChar(255) @map("file_name")
-  mimeType     String        @db.VarChar(100) @map("mime_type")
+  publicId     String?       @map("public_id") @db.VarChar(255)
+  originalName String        @map("original_name") @db.VarChar(255)
+  fileName     String?       @map("file_name") @db.VarChar(255)
+  mimeType     String        @map("mime_type") @db.VarChar(100)
   sizeBytes    BigInt        @map("size_bytes")
   width        Int?          @map("width")
   height       Int?          @map("height")
-  secureUrl    String        @db.VarChar(1000) @map("secure_url")
-  altText      String?       @db.VarChar(255) @map("alt_text")
+  secureUrl    String        @map("secure_url") @db.VarChar(1000)
+  altText      String?       @map("alt_text") @db.VarChar(255)
   metadata     Json?         @map("metadata")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
@@ -194,11 +211,11 @@ model MediaAsset {
 
 model BlogCategory {
   id          BigInt    @id @default(autoincrement()) @map("id")
-  uuid        String    @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid        String    @unique @default(uuid()) @map("uuid") @db.Char(36)
   parentId    BigInt?   @map("parent_id")
-  name        String    @db.VarChar(150) @map("name")
-  slug        String    @unique @db.VarChar(191) @map("slug")
-  description String?   @db.Text @map("description")
+  name        String    @map("name") @db.VarChar(150)
+  slug        String    @unique @map("slug") @db.VarChar(191)
+  description String?   @map("description") @db.Text
   sortOrder   Int       @default(0) @map("sort_order")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -216,9 +233,9 @@ model BlogCategory {
 
 model BlogTag {
   id        BigInt    @id @default(autoincrement()) @map("id")
-  uuid      String    @unique @default(uuid()) @db.Char(36) @map("uuid")
-  name      String    @db.VarChar(100) @map("name")
-  slug      String    @unique @db.VarChar(191) @map("slug")
+  uuid      String    @unique @default(uuid()) @map("uuid") @db.Char(36)
+  name      String    @map("name") @db.VarChar(100)
+  slug      String    @unique @map("slug") @db.VarChar(191)
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
@@ -231,21 +248,21 @@ model BlogTag {
 
 model BlogPost {
   id              BigInt     @id @default(autoincrement()) @map("id")
-  uuid            String     @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid            String     @unique @default(uuid()) @map("uuid") @db.Char(36)
   authorId        BigInt     @map("author_id")
   categoryId      BigInt?    @map("category_id")
   featuredImageId BigInt?    @map("featured_image_id")
-  title           String     @db.VarChar(255) @map("title")
-  slug            String     @unique @db.VarChar(191) @map("slug")
-  excerpt         String?    @db.VarChar(500) @map("excerpt")
-  content         String     @db.Text @map("content")
+  title           String     @map("title") @db.VarChar(255)
+  slug            String     @unique @map("slug") @db.VarChar(191)
+  excerpt         String?    @map("excerpt") @db.VarChar(500)
+  content         String     @map("content") @db.Text
   status          PostStatus @default(DRAFT) @map("status")
   isFeatured      Boolean    @default(false) @map("is_featured")
   featuredOrder   Int        @default(0) @map("featured_order")
   readingMinutes  Int        @default(1) @map("reading_minutes")
   viewCount       Int        @default(0) @map("view_count")
-  seoTitle        String?    @db.VarChar(255) @map("seo_title")
-  seoDescription  String?    @db.VarChar(500) @map("seo_description")
+  seoTitle        String?    @map("seo_title") @db.VarChar(255)
+  seoDescription  String?    @map("seo_description") @db.VarChar(500)
   publishedAt     DateTime?  @map("published_at")
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
@@ -269,10 +286,10 @@ model BlogPost {
 
 model BlogLike {
   id        BigInt   @id @default(autoincrement()) @map("id")
-  uuid      String   @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid      String   @unique @default(uuid()) @map("uuid") @db.Char(36)
   postId    BigInt   @map("post_id")
   userId    BigInt?  @map("user_id")
-  ipHash    String?  @db.Char(64) @map("ip_hash")
+  ipHash    String?  @map("ip_hash") @db.Char(64)
   createdAt DateTime @default(now()) @map("created_at")
 
   post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -300,12 +317,12 @@ model BlogPostTag {
 
 model ProductBrand {
   id          BigInt    @id @default(autoincrement()) @map("id")
-  uuid        String    @unique @default(uuid()) @db.Char(36) @map("uuid")
-  name        String    @db.VarChar(150) @map("name")
-  slug        String    @unique @db.VarChar(191) @map("slug")
-  description String?   @db.Text @map("description")
-  logoUrl     String?   @db.VarChar(1000) @map("logo_url")
-  country     String?   @db.VarChar(100) @map("country")
+  uuid        String    @unique @default(uuid()) @map("uuid") @db.Char(36)
+  name        String    @map("name") @db.VarChar(150)
+  slug        String    @unique @map("slug") @db.VarChar(191)
+  description String?   @map("description") @db.Text
+  logoUrl     String?   @map("logo_url") @db.VarChar(1000)
+  country     String?   @map("country") @db.VarChar(100)
   sortOrder   Int       @default(0) @map("sort_order")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -320,11 +337,11 @@ model ProductBrand {
 
 model ProductCategory {
   id          BigInt    @id @default(autoincrement()) @map("id")
-  uuid        String    @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid        String    @unique @default(uuid()) @map("uuid") @db.Char(36)
   parentId    BigInt?   @map("parent_id")
-  name        String    @db.VarChar(150) @map("name")
-  slug        String    @unique @db.VarChar(191) @map("slug")
-  description String?   @db.Text @map("description")
+  name        String    @map("name") @db.VarChar(150)
+  slug        String    @unique @map("slug") @db.VarChar(191)
+  description String?   @map("description") @db.Text
   sortOrder   Int       @default(0) @map("sort_order")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -341,16 +358,19 @@ model ProductCategory {
 }
 
 model ProductCollection {
-  id          BigInt    @id @default(autoincrement()) @map("id")
-  uuid        String    @unique @default(uuid()) @db.Char(36) @map("uuid")
-  name        String    @db.VarChar(150) @map("name")
-  slug        String    @unique @db.VarChar(191) @map("slug")
-  description String?   @db.Text @map("description")
-  isActive    Boolean   @default(true) @map("is_active")
-  sortOrder   Int       @default(0) @map("sort_order")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  deletedAt   DateTime? @map("deleted_at")
+  id             BigInt    @id @default(autoincrement()) @map("id")
+  uuid           String    @unique @default(uuid()) @map("uuid") @db.Char(36)
+  name           String    @map("name") @db.VarChar(150)
+  slug           String    @unique @map("slug") @db.VarChar(191)
+  description    String?   @map("description") @db.Text
+  coverImageUrl  String?   @map("cover_image_url") @db.VarChar(1000)
+  seoTitle       String?   @map("seo_title") @db.VarChar(255)
+  seoDescription String?   @map("seo_description") @db.VarChar(500)
+  isActive       Boolean   @default(true) @map("is_active")
+  sortOrder      Int       @default(0) @map("sort_order")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
 
   products ProductCollectionItem[]
 
@@ -361,43 +381,45 @@ model ProductCollection {
 
 model Product {
   id               BigInt        @id @default(autoincrement()) @map("id")
-  uuid             String        @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid             String        @unique @default(uuid()) @map("uuid") @db.Char(36)
   categoryId       BigInt?       @map("category_id")
   brandId          BigInt?       @map("brand_id")
-  name             String        @db.VarChar(255) @map("name")
-  slug             String        @unique @db.VarChar(191) @map("slug")
-  sku              String?       @unique @db.VarChar(100) @map("sku")
-  barcode          String?       @db.VarChar(100) @map("barcode")
-  shortDescription String?       @db.VarChar(500) @map("short_description")
-  description      String?       @db.Text @map("description")
-  skinType         String?       @db.VarChar(120) @map("skin_type")
-  ingredients      String?       @db.Text @map("ingredients")
-  howToUse         String?       @db.Text @map("how_to_use")
-  benefits         String?       @db.Text @map("benefits")
-  caution          String?       @db.Text @map("caution")
-  price            Decimal       @default(0) @db.Decimal(12, 2) @map("price")
+  name             String        @map("name") @db.VarChar(255)
+  slug             String        @unique @map("slug") @db.VarChar(191)
+  sku              String?       @unique @map("sku") @db.VarChar(100)
+  barcode          String?       @map("barcode") @db.VarChar(100)
+  shortDescription String?       @map("short_description") @db.VarChar(500)
+  description      String?       @map("description") @db.Text
+  skinType         String?       @map("skin_type") @db.VarChar(120)
+  ingredients      String?       @map("ingredients") @db.Text
+  howToUse         String?       @map("how_to_use") @db.Text
+  benefits         String?       @map("benefits") @db.Text
+  caution          String?       @map("caution") @db.Text
+  price            Decimal       @default(0) @map("price") @db.Decimal(12, 2)
   stock            Int           @default(0) @map("stock")
-  unit             String?       @db.VarChar(50) @map("unit")
-  compareAtPrice   Decimal?      @db.Decimal(12, 2) @map("compare_at_price")
-  currency         String        @default("VND") @db.Char(3) @map("currency")
+  unit             String?       @map("unit") @db.VarChar(50)
+  compareAtPrice   Decimal?      @map("compare_at_price") @db.Decimal(12, 2)
+  currency         String        @default("VND") @map("currency") @db.Char(3)
   status           ProductStatus @default(DRAFT) @map("status")
   isFeatured       Boolean       @default(false) @map("is_featured")
   featuredOrder    Int           @default(0) @map("featured_order")
   viewCount        Int           @default(0) @map("view_count")
   sortOrder        Int           @default(0) @map("sort_order")
-  seoTitle         String?       @db.VarChar(255) @map("seo_title")
-  seoDescription   String?       @db.VarChar(500) @map("seo_description")
+  seoTitle         String?       @map("seo_title") @db.VarChar(255)
+  seoDescription   String?       @map("seo_description") @db.VarChar(500)
   publishedAt      DateTime?     @map("published_at")
   rawImportData    Json?         @map("raw_import_data")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
   deletedAt        DateTime?     @map("deleted_at")
 
-  category    ProductCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brand       ProductBrand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  images      ProductImage[]
-  comments    Comment[]
-  collections ProductCollectionItem[]
+  category       ProductCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand          ProductBrand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  images         ProductImage[]
+  comments       Comment[]
+  collections    ProductCollectionItem[]
+  quoteItems     QuoteItem[]
+  interestEvents InterestEvent[]
 
   @@index([categoryId], map: "idx_products_category_id")
   @@index([brandId], map: "idx_products_brand_id")
@@ -409,6 +431,75 @@ model Product {
   @@index([viewCount], map: "idx_products_view_count")
   @@index([deletedAt], map: "idx_products_deleted_at")
   @@map("products")
+}
+
+model Quote {
+  id                    BigInt      @id @default(autoincrement()) @map("id")
+  uuid                  String      @unique @default(uuid()) @map("uuid") @db.Char(36)
+  code                  String      @unique @map("code") @db.VarChar(32)
+  publicTokenHash       String      @unique @map("public_token_hash") @db.Char(64)
+  publicTokenCiphertext String?     @map("public_token_ciphertext") @db.Text
+  requestKey            String?     @unique @map("request_key") @db.Char(36)
+  status                QuoteStatus @default(CREATED) @map("status")
+  note                  String?     @map("note") @db.VarChar(1000)
+  snapshotTotal         Decimal     @map("snapshot_total") @db.Decimal(12, 2)
+  currency              String      @default("VND") @map("currency") @db.Char(3)
+  messengerOpenedAt     DateTime?   @map("messenger_opened_at")
+  processedAt           DateTime?   @map("processed_at")
+  expiresAt             DateTime    @map("expires_at")
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+  archivedAt            DateTime?   @map("archived_at")
+
+  items          QuoteItem[]
+  interestEvents InterestEvent[]
+
+  @@index([status, createdAt], map: "idx_quotes_status_created_at")
+  @@index([expiresAt], map: "idx_quotes_expires_at")
+  @@index([archivedAt], map: "idx_quotes_archived_at")
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id          BigInt   @id @default(autoincrement()) @map("id")
+  quoteId     BigInt   @map("quote_id")
+  productId   BigInt?  @map("product_id")
+  productUuid String   @map("product_uuid") @db.Char(36)
+  name        String   @map("name") @db.VarChar(255)
+  sku         String?  @map("sku") @db.VarChar(100)
+  unit        String?  @map("unit") @db.VarChar(50)
+  imageUrl    String?  @map("image_url") @db.VarChar(1000)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(12, 2)
+  quantity    Int      @map("quantity")
+  lineTotal   Decimal  @map("line_total") @db.Decimal(12, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([quoteId], map: "idx_quote_items_quote_id")
+  @@index([productId], map: "idx_quote_items_product_id")
+  @@map("quote_items")
+}
+
+model InterestEvent {
+  id          BigInt            @id @default(autoincrement()) @map("id")
+  uuid        String            @unique @default(uuid()) @map("uuid") @db.Char(36)
+  eventType   InterestEventType @map("event_type")
+  productId   BigInt?           @map("product_id")
+  quoteId     BigInt?           @map("quote_id")
+  sessionHash String?           @map("session_hash") @db.Char(64)
+  metadata    Json?             @map("metadata")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  quote   Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt], map: "idx_interest_events_type_created_at")
+  @@index([productId, createdAt], map: "idx_interest_events_product_created_at")
+  @@index([quoteId], map: "idx_interest_events_quote_id")
+  @@index([sessionHash, createdAt], map: "idx_interest_events_session_created_at")
+  @@map("interest_events")
 }
 
 model ProductCollectionItem {
@@ -429,7 +520,7 @@ model ProductImage {
   id           BigInt   @id @default(autoincrement()) @map("id")
   productId    BigInt   @map("product_id")
   mediaAssetId BigInt   @map("media_asset_id")
-  altText      String?  @db.VarChar(255) @map("alt_text")
+  altText      String?  @map("alt_text") @db.VarChar(255)
   sortOrder    Int      @default(0) @map("sort_order")
   isPrimary    Boolean  @default(false) @map("is_primary")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -446,17 +537,17 @@ model ProductImage {
 
 model Comment {
   id          BigInt        @id @default(autoincrement()) @map("id")
-  uuid        String        @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid        String        @unique @default(uuid()) @map("uuid") @db.Char(36)
   postId      BigInt?       @map("post_id")
   productId   BigInt?       @map("product_id")
   userId      BigInt?       @map("user_id")
   parentId    BigInt?       @map("parent_id")
-  authorName  String        @db.VarChar(150) @map("author_name")
-  authorEmail String        @db.VarChar(191) @map("author_email")
-  content     String        @db.Text @map("content")
+  authorName  String        @map("author_name") @db.VarChar(150)
+  authorEmail String        @map("author_email") @db.VarChar(191)
+  content     String        @map("content") @db.Text
   status      CommentStatus @default(VISIBLE) @map("status")
-  ipAddress   String?       @db.VarChar(64) @map("ip_address")
-  userAgent   String?       @db.VarChar(500) @map("user_agent")
+  ipAddress   String?       @map("ip_address") @db.VarChar(64)
+  userAgent   String?       @map("user_agent") @db.VarChar(500)
   moderatedAt DateTime?     @map("moderated_at")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
@@ -479,11 +570,11 @@ model Comment {
 
 model ImportJob {
   id           BigInt       @id @default(autoincrement()) @map("id")
-  uuid         String       @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid         String       @unique @default(uuid()) @map("uuid") @db.Char(36)
   createdById  BigInt?      @map("created_by_id")
-  type         String       @db.VarChar(100) @map("type")
-  originalName String       @db.VarChar(255) @map("original_name")
-  fileUrl      String?      @db.VarChar(1000) @map("file_url")
+  type         String       @map("type") @db.VarChar(100)
+  originalName String       @map("original_name") @db.VarChar(255)
+  fileUrl      String?      @map("file_url") @db.VarChar(1000)
   status       ImportStatus @default(PENDING) @map("status")
   totalRows    Int          @default(0) @map("total_rows")
   successRows  Int          @default(0) @map("success_rows")
@@ -495,7 +586,7 @@ model ImportJob {
   updatedAt    DateTime     @updatedAt @map("updated_at")
   deletedAt    DateTime?    @map("deleted_at")
 
-  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
   rows      ImportRow[]
 
   @@index([createdById], map: "idx_import_jobs_created_by_id")
@@ -506,12 +597,12 @@ model ImportJob {
 
 model ImportRow {
   id          BigInt   @id @default(autoincrement()) @map("id")
-  uuid        String   @unique @default(uuid()) @db.Char(36) @map("uuid")
+  uuid        String   @unique @default(uuid()) @map("uuid") @db.Char(36)
   importJobId BigInt   @map("import_job_id")
   rowNumber   Int      @map("row_number")
-  sku         String?  @db.VarChar(100) @map("sku")
-  status      String   @db.VarChar(30) @map("status")
-  message     String?  @db.Text @map("message")
+  sku         String?  @map("sku") @db.VarChar(100)
+  status      String   @map("status") @db.VarChar(30)
+  message     String?  @map("message") @db.Text
   warnings    Json?    @map("warnings")
   errors      Json?    @map("errors")
   rawData     Json?    @map("raw_data")
@@ -529,11 +620,11 @@ model ImportRow {
 
 model SiteSetting {
   id          BigInt      @id @default(autoincrement()) @map("id")
-  key         String      @unique @db.VarChar(120) @map("setting_key")
+  key         String      @unique @map("setting_key") @db.VarChar(120)
   value       Json        @map("setting_value")
   type        SettingType @default(STRING) @map("setting_type")
-  group       String      @default("general") @db.VarChar(80) @map("setting_group")
-  description String?     @db.VarChar(255) @map("description")
+  group       String      @default("general") @map("setting_group") @db.VarChar(80)
+  description String?     @map("description") @db.VarChar(255)
   isPublic    Boolean     @default(false) @map("is_public")
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
@@ -544,19 +635,19 @@ model SiteSetting {
 }
 
 model AuditLog {
-  id           BigInt   @id @default(autoincrement()) @map("id")
-  uuid         String   @unique @default(uuid()) @db.Char(36) @map("uuid")
-  actorId      BigInt?  @map("actor_id")
-  actorEmail   String?  @db.VarChar(191) @map("actor_email")
-  action       String   @db.VarChar(120) @map("action")
-  entityType   String   @db.VarChar(120) @map("entity_type")
-  entityId     String?  @db.VarChar(120) @map("entity_id")
-  beforeData   Json?    @map("before_data")
-  afterData    Json?    @map("after_data")
-  metadata     Json?    @map("metadata")
-  ipAddress    String?  @db.VarChar(64) @map("ip_address")
-  userAgent    String?  @db.VarChar(500) @map("user_agent")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id         BigInt   @id @default(autoincrement()) @map("id")
+  uuid       String   @unique @default(uuid()) @map("uuid") @db.Char(36)
+  actorId    BigInt?  @map("actor_id")
+  actorEmail String?  @map("actor_email") @db.VarChar(191)
+  action     String   @map("action") @db.VarChar(120)
+  entityType String   @map("entity_type") @db.VarChar(120)
+  entityId   String?  @map("entity_id") @db.VarChar(120)
+  beforeData Json?    @map("before_data")
+  afterData  Json?    @map("after_data")
+  metadata   Json?    @map("metadata")
+  ipAddress  String?  @map("ip_address") @db.VarChar(64)
+  userAgent  String?  @map("user_agent") @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
 
   actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
 

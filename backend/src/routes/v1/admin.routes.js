@@ -8,12 +8,15 @@ import { ADMIN_ROLES, USER_ROLES } from '../../constants/roles.js';
 import { adminController } from '../../modules/admin/admin.controller.js';
 import {
   adminBootstrapSchema,
+  adminLogListSchema,
+  analyticsQuerySchema,
   adminProfilePasswordChangeRequestSchema,
   adminProfilePasswordChangeVerifySchema,
   brandSchema,
   blogPostSchema,
   categorySchema,
   collectionSchema,
+  collectionProductsSchema,
   featuredToggleSchema,
   homepageFeaturedItemDeleteSchema,
   homepageFeaturedItemReorderSchema,
@@ -24,10 +27,19 @@ import {
   listGenericSchema,
   listProductSchema,
   listSettingsSchema,
+  mediaListSchema,
+  mediaUpdateSchema,
+  mediaUploadSchema,
   notificationRecipientCreateSchema,
   notificationRecipientVerifySchema,
   productSchema,
+  productBulkSchema,
+  productPermanentDeleteSchema,
   productStatusSchema,
+  quoteBulkArchiveSchema,
+  quoteBulkRestoreSchema,
+  quoteListSchema,
+  quoteStatusSchema,
   settingsSchema,
   tagSchema,
   updateBlogPostSchema,
@@ -100,9 +112,15 @@ router.delete('/products/brands/:uuid', requirePermission('products:delete'), va
 
 router.get('/products/collections', requirePermission('products:read'), validate(listGenericSchema), adminController.listCollections);
 router.post('/products/collections', requirePermission('products:create'), validate(collectionSchema), adminController.createCollection);
+router.get('/products/collections/:uuid', requirePermission('products:read'), validate(uuidOnlySchema), adminController.getCollection);
 router.patch('/products/collections/:uuid', requirePermission('products:update'), validate(updateCollectionSchema), adminController.updateCollection);
+router.put('/products/collections/:uuid/products', requirePermission('products:update'), validate(collectionProductsSchema), adminController.setCollectionProducts);
 router.delete('/products/collections/:uuid', requirePermission('products:delete'), validate(uuidOnlySchema), adminController.deleteCollection);
 
+router.get('/products/export/inventory.xlsx', requirePermission('products:read'), adminController.downloadInventoryExport);
+router.patch('/products/bulk/archive', requirePermission('products:delete'), validate(productBulkSchema), adminController.archiveProductsBulk);
+router.patch('/products/bulk/restore', requirePermission('products:update'), validate(productBulkSchema), adminController.restoreProductsBulk);
+router.delete('/products/bulk/permanent', requirePermission('products:delete'), validate(productPermanentDeleteSchema), adminController.permanentlyDeleteProductsBulk);
 router.get('/products', requirePermission('products:read'), validate(listProductSchema), adminController.listProducts);
 router.post('/products', requirePermission('products:create'), validate(productSchema), adminController.createProduct);
 router.get('/products/:uuid', requirePermission('products:read'), validate(uuidOnlySchema), adminController.getProduct);
@@ -114,9 +132,19 @@ router.patch('/products/:uuid/archive', requirePermission('products:update'), va
 router.patch('/products/:uuid/featured', requirePermission('products:update'), validate(featuredToggleSchema), adminController.updateProductFeatured);
 router.delete('/products/:uuid', requirePermission('products:delete'), validate(uuidOnlySchema), adminController.deleteProduct);
 
-router.get('/media', requirePermission('media:read'), validate(listGenericSchema), adminController.listMedia);
-router.post('/media/images', requirePermission('media:create'), uploadRateLimiter, imageUpload.single('file'), validateUploadedImageFile, adminController.uploadImage);
+router.get('/media', requirePermission('media:read'), validate(mediaListSchema), adminController.listMedia);
+router.post('/media/images', requirePermission('media:create'), uploadRateLimiter, imageUpload.single('file'), validateUploadedImageFile, validate(mediaUploadSchema), adminController.uploadImage);
+router.patch('/media/:uuid', requirePermission('media:update'), validate(mediaUpdateSchema), adminController.updateMedia);
 router.delete('/media/:uuid', requirePermission('media:delete'), validate(uuidOnlySchema), adminController.deleteMedia);
+
+router.get('/quotes', authorize(USER_ROLES.ADMIN), validate(quoteListSchema), adminController.listQuotes);
+router.patch('/quotes/archive', authorize(USER_ROLES.ADMIN), validate(quoteBulkArchiveSchema), adminController.archiveQuotes);
+router.patch('/quotes/restore', authorize(USER_ROLES.ADMIN), validate(quoteBulkRestoreSchema), adminController.restoreQuotes);
+router.get('/quotes/:uuid', authorize(USER_ROLES.ADMIN), validate(uuidOnlySchema), adminController.getQuote);
+router.patch('/quotes/:uuid/status', authorize(USER_ROLES.ADMIN), validate(quoteStatusSchema), adminController.updateQuoteStatus);
+router.get('/analytics/interest', authorize(USER_ROLES.ADMIN), validate(analyticsQuerySchema), adminController.interestAnalytics);
+router.get('/logs/email', authorize(USER_ROLES.ADMIN), validate(adminLogListSchema), adminController.listEmailLogs);
+router.get('/logs/audit', authorize(USER_ROLES.ADMIN), validate(adminLogListSchema), adminController.listAuditLogs);
 
 router.get('/imports', requirePermission('imports:read'), validate(listGenericSchema), adminController.listImportJobs);
 router.get('/imports/products/template', requirePermission('imports:read'), adminController.downloadProductImportTemplate);

@@ -8,7 +8,7 @@ const safeDecodeURIComponent = (value = '') => {
 
 export const cookieParser = (req, res, next) => {
   const header = req.headers.cookie;
-  req.cookies = {};
+  req.cookies = Object.create(null);
   if (header) {
     for (const pair of header.split(';')) {
       const index = pair.indexOf('=');

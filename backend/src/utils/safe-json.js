@@ -1,7 +1,7 @@
 const SENSITIVE_KEY_PATTERNS = [
   /password/i,
   /passwordHash/i,
-  /^token$/i,
+  /token/i,
   /bootstrapToken/i,
   /accessToken/i,
   /refreshToken/i,
@@ -11,6 +11,9 @@ const SENSITIVE_KEY_PATTERNS = [
   /authorization/i,
   /^cookie$/i,
   /jwt/i,
+  /apiKey/i,
+  /databaseUrl/i,
+  /directUrl/i,
 ];
 
 const isSensitiveKey = (key = '') => SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(String(key)));

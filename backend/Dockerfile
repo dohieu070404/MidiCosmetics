@@ -1,4 +1,4 @@
-FROM node:20.19.5-bookworm-slim AS deps
+FROM node:24.19.0-bookworm-slim AS deps
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
@@ -21,7 +21,7 @@ COPY prisma ./prisma
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund --no-progress
 RUN ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
 
-FROM node:20.19.5-bookworm-slim AS runtime
+FROM node:24.19.0-bookworm-slim AS runtime
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates dumb-init \
@@ -46,7 +46,7 @@ COPY templates ./templates
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN chmod +x ./docker-entrypoint.sh \
-  && mkdir -p /app/uploads \
+  && mkdir -p /app/uploads /app/.private/imports \
   && groupadd --system nodeapp \
   && useradd --system --gid nodeapp --home-dir /app nodeapp \
   && chown -R nodeapp:nodeapp /app

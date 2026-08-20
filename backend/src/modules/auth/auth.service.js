@@ -14,6 +14,7 @@ const JWT_TIME_UNITS_IN_MS = Object.freeze({
   h: 60 * 60 * 1000,
   d: 24 * 60 * 60 * 1000,
 });
+const DUMMY_PASSWORD_HASH = '$2a$12$vu/Sa6GXCmDBxlrAo4EhBuVNIvJD2M8u56Hne.McEaeRifuCtZiVO';
 
 const parseJwtDurationToDate = (duration) => {
   const match = /^(\d+)([smhd])$/.exec(duration);
@@ -47,13 +48,11 @@ export const authService = {
 
     const invalidCredentialsError = () => ApiError.unauthorized('Invalid email or password');
 
-    if (!user || user.status !== 'ACTIVE' || user.role !== USER_ROLES.ADMIN) {
-      throw invalidCredentialsError();
-    }
+    // Always perform one bcrypt comparison so an attacker cannot enumerate
+    // admin emails from the response timing of a nonexistent account.
+    const isPasswordValid = await comparePassword(password, user?.passwordHash || DUMMY_PASSWORD_HASH);
 
-    const isPasswordValid = await comparePassword(password, user.passwordHash);
-
-    if (!isPasswordValid) {
+    if (!user || user.status !== 'ACTIVE' || user.role !== USER_ROLES.ADMIN || !isPasswordValid) {
       throw invalidCredentialsError();
     }
 

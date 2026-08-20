@@ -1,58 +1,51 @@
-# Midi Cosmetics Backend
+# Midi Cosmetics API
 
-Backend API for Midi Cosmetics.
+Express + Prisma API cho catalog, blog, collections, media, giỏ khách/báo giá và quản trị Midi Cosmetics.
 
-## Run with Docker
+## Khởi động
 
-From the project root:
+Khuyên dùng Docker từ thư mục gốc để PostgreSQL, backend và frontend tự chạy cùng nhau:
 
 ```bash
-cp .env.docker.example .env
-docker compose down -v --remove-orphans
-docker compose up --build
+./scripts/setup-local.sh
+docker compose up -d --build
 ```
 
-## Local URLs
+Nếu chạy riêng backend ngoài Docker, trước hết cần có PostgreSQL local ở `localhost:5432`, sau đó:
 
-- Frontend: http://localhost:8081
-- Backend health: http://localhost:8080/health
-- API health: http://localhost:8080/api/v1/health
-- MySQL from host: localhost:3037
+```bash
+cp .env.example .env
+npm ci
+npm run prisma:generate
+npm run prisma:deploy
+npm run prisma:seed
+npm run dev
+```
 
-Inside Docker, backend connects to MySQL through `mysql:3306`. This is expected.
+Khi chạy riêng backend, API mặc định là `http://localhost:8080/api/v1`. Khi chạy Docker Compose, truy cập qua frontend Nginx tại `http://localhost:8081/api/v1`; cổng backend không được publish ra host.
 
-## Admin accounts
+## Public API
 
-Development seed admin is created only when `NODE_ENV=development`, `SEED_DATABASE=true` and `ALLOW_ADMIN_SEED=true`.
+- `GET /homepage`, `/about`, `/products`, `/products/:slug`
+- `GET /collections`, `/collections/:slug`
+- `GET /blogs`, `/blogs/:slug`, `/taxonomies`
+- `POST /quotes`, `GET /quotes/:token`
+- `POST /quotes/:token/messenger-opened`
+- `POST /analytics/events`
 
-| Role | Email | Password |
-| --- | --- | --- |
-| ADMIN | admin@midicosmetics.local | Admin@123456 |
+Public không có đăng ký, đăng nhập hoặc tài khoản khách hàng.
 
-Production must create the first admin with `POST /api/v1/admin/bootstrap`; do not seed a fixed production admin.
+## Admin API
 
-## Roles
+Các route `/admin/*` yêu cầu access token admin. Bao gồm dashboard, sản phẩm, xuất kho Excel, xóa/khôi phục hàng loạt, taxonomy, collections, media, import, homepage, blog, báo giá, phân tích quan tâm, email logs, audit logs, notification recipients và profile.
 
-The system uses admin-only management. Public users browse products/blog/about without login.
+Seed không tạo hoặc thay đổi admin. Tài khoản thật đã có trong Supabase nên giữ `ADMIN_BOOTSTRAP_ENABLED=false`.
 
-- `ADMIN`: manage posts, products, categories, brands, imports and settings.
+## Lưu ý production
 
-Public registration is disabled.
-
-## Product import
-
-Product import is inside product management. Admin can choose manual entry or Excel import.
-
-The import flow supports:
-
-- Download sample file
-- Preview rows
-- Show row errors before importing
-- Import only when the preview is valid
-- Save import logs
-
-## Docker notes
-
-The Docker build uses Node 20.19.5 and npm with the public npm registry.
-
-`package-lock.json` must not contain private/internal registry URLs.
+- PostgreSQL/Supabase; `DATABASE_URL` dùng runtime pooler, `DIRECT_URL` dùng migrations.
+- Chạy `npm run prisma:deploy` trong release job, không tự migrate trong runtime.
+- Dùng Cloudinary cho media trên môi trường không có persistent disk.
+- Giữ JWT, database, SMTP và Cloudinary secrets ngoài source.
+- Không có seed admin hoặc mật khẩu quản trị mặc định trong source.
+- Đặt API sau CDN/WAF khi public; CAPTCHA và rate limiter của ứng dụng không thay thế chống DDoS ở tầng mạng.

@@ -1,38 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { SectionHeading } from '@/components/brand/section-heading';
-import { Container } from '@/components/common/container';
-import { ImageWithFallback } from '@/components/common/image-with-fallback';
-import { PageShell } from '@/components/common/page-shell';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ROUTE_PATHS } from '@/app/router/route-paths';
-import { formatVnd, publicApi } from '@/lib/api/public-api';
+import { SlidersHorizontal, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
-const getPublicProductImage = (product) => product.mainImage || product.images?.[0] || null;
-
-function ProductCard({ product }) {
-  return (
-    <Card className="group h-full overflow-hidden bg-card/80 transition-transform duration-300 hover:-translate-y-1">
-      <CardContent className="flex h-full flex-col p-0">
-        <Link to={ROUTE_PATHS.productDetail(product.slug)} className="block overflow-hidden bg-secondary/40">
-          <ImageWithFallback src={getPublicProductImage(product)} alt={product.name} className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-105 sm:aspect-[5/4]" loading="lazy" />
-        </Link>
-        <div className="flex flex-1 flex-col p-5 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Badge variant="outline" className="max-w-full truncate">{product.category?.name || 'Midi'}</Badge>
-            <span className="text-sm font-semibold text-primary">{product.formattedPrice || formatVnd(product.price, product.currency)}</span>
-          </div>
-          <h2 className="mt-4 line-clamp-2 font-display text-xl font-semibold leading-tight tracking-tight sm:text-2xl"><Link to={ROUTE_PATHS.productDetail(product.slug)}>{product.name}</Link></h2>
-          <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">{product.brand?.name || 'Chưa có thương hiệu'}</p>
-          <p className="mt-4 line-clamp-3 text-sm leading-7 text-muted-foreground">{product.shortDescription || product.description || 'Đang cập nhật mô tả.'}</p>
-          <Button asChild variant="outline" className="mt-auto w-full sm:w-fit"><Link to={ROUTE_PATHS.productDetail(product.slug)}>Xem chi tiết</Link></Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { ProductCard } from "@/components/commerce/product-card";
+import { Container } from "@/components/common/container";
+import { Reveal } from "@/components/common/reveal";
+import { StatePanel } from "@/components/common/state-panel";
+import { Button } from "@/components/ui/button";
+import { HERO_PRODUCT_GROUPS, PRODUCT_GROUP_BY_ID, getProductGroupCategorySlugs } from "@/constants/product-taxonomy";
+import { publicApi } from "@/lib/api/public-api";
+import { cn } from "@/lib/utils";
 
 export function ProductCatalogPage() {
   const [params, setParams] = useSearchParams();
@@ -40,83 +17,91 @@ export function ProductCatalogPage() {
   const [tax, setTax] = useState({ productCategories: [], productBrands: [] });
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const search = params.get('search') || '';
-  const category = params.get('category') || '';
-  const brand = params.get('brand') || '';
-  const sort = params.get('sort') || 'latest';
-  const page = Number(params.get('page') || 1);
-  const query = useMemo(() => ({ search, category, brand, sort, page, limit: 12 }), [search, category, brand, sort, page]);
+  const [error, setError] = useState("");
+  const search = params.get("search") || "";
+  const group = params.get("group") || "";
+  const category = params.get("category") || "";
+  const brand = params.get("brand") || "";
+  const sort = params.get("sort") || "latest";
+  const page = Number(params.get("page") || 1);
+  const query = useMemo(() => ({ search, group, category, brand, sort, page, limit: 12 }), [brand, category, group, page, search, sort]);
+  const activeGroup = PRODUCT_GROUP_BY_ID[group];
+  const composing = useRef(false);
+  const [searchInput, setSearchInput] = useState(search);
 
-  useEffect(() => { publicApi.taxonomies().then((res) => setTax(res.data)).catch(() => null); }, []);
+  const categoryOptions = useMemo(() => {
+    if (!group) return tax.productCategories || [];
+    const allowed = new Set(getProductGroupCategorySlugs(group));
+    return (tax.productCategories || []).filter((item) => allowed.has(item.slug));
+  }, [group, tax.productCategories]);
+
+  useEffect(() => { publicApi.taxonomies().then((response) => setTax(response.data)).catch(() => null); }, []);
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       setLoading(true);
-      setError('');
+      setError("");
       publicApi.listProducts(query)
-        .then((res) => { setProducts(res.data.products || []); setMeta(res.meta || {}); })
+        .then((response) => { setProducts(response.data.products || []); setMeta(response.meta || {}); })
         .catch((err) => setError(err.message))
         .finally(() => setLoading(false));
-    }, 300);
-    return () => clearTimeout(timer);
+    }, 180);
+    return () => window.clearTimeout(timer);
   }, [query]);
+  useEffect(() => { if (!composing.current) setSearchInput(search); }, [search]);
 
-  const updateParam = useCallback((key, value, options = {}) => {
-    setParams((currentParams) => {
-      const next = new URLSearchParams(currentParams);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      if (key !== 'page') next.set('page', '1');
-      return next;
-    }, options);
-  }, [setParams]);
+  const setParam = useCallback((key, value) => setParams((current) => {
+    const next = new URLSearchParams(current);
+    if (value) next.set(key, value); else next.delete(key);
+    if (key !== "page") next.set("page", "1");
+    return next;
+  }), [setParams]);
 
-  const [searchInput, setSearchInput] = useState(search);
-  const isComposingSearchRef = useRef(false);
+  const selectGroup = useCallback((value) => setParams((current) => {
+    const next = new URLSearchParams(current);
+    if (value) next.set("group", value); else next.delete("group");
+    next.delete("category");
+    next.delete("search");
+    next.set("page", "1");
+    return next;
+  }), [setParams]);
 
-  useEffect(() => {
-    if (!isComposingSearchRef.current) setSearchInput(search);
-  }, [search]);
-
-  const commitSearch = useCallback((value) => {
-    updateParam('search', value.trim(), { replace: true });
-  }, [updateParam]);
-
-  const handleSearchChange = (event) => {
-    const value = event.target.value;
-    setSearchInput(value);
-    if (!isComposingSearchRef.current) commitSearch(value);
-  };
-
-  const handleSearchCompositionStart = () => {
-    isComposingSearchRef.current = true;
-  };
-
-  const handleSearchCompositionEnd = (event) => {
-    isComposingSearchRef.current = false;
-    const value = event.currentTarget.value;
-    setSearchInput(value);
-    commitSearch(value);
-  };
+  const hasFilters = Boolean(search || group || category || brand || sort !== "latest");
 
   return (
-    <PageShell className="py-10 sm:py-14 lg:py-20">
+    <div className="pb-24 lg:pb-36">
+      <header className="border-b border-border bg-secondary/45 py-14 text-center sm:py-20">
+        <Container>
+          <Reveal>
+            <p className="midi-eyebrow">MIDI Selection</p>
+            <h1 className="mx-auto mt-5 max-w-4xl font-display text-[clamp(2.8rem,6vw,5.5rem)] font-normal leading-[.96] tracking-[-0.052em]">{activeGroup ? activeGroup.label : "Sản phẩm được chọn kỹ, để bạn chọn dễ hơn."}</h1>
+            <p className="mx-auto mt-6 max-w-2xl text-[0.98rem] leading-7 text-muted-foreground">{activeGroup?.description || "Tìm theo nhu cầu, danh mục hoặc thương hiệu. Không cần đăng nhập để thêm vào giỏ."}</p>
+          </Reveal>
+        </Container>
+      </header>
+
       <Container>
-        <SectionHeading eyebrow="Sản phẩm Midi Cosmetics" title="Danh sách sản phẩm Midi Cosmetics." description="Tìm sản phẩm theo danh mục, thương hiệu hoặc mức giá." />
-        <div className="mt-8 grid gap-3 rounded-[1.75rem] border border-border bg-card/70 p-4 sm:mt-10 md:grid-cols-4">
-          <input value={searchInput} onChange={handleSearchChange} onCompositionStart={handleSearchCompositionStart} onCompositionEnd={handleSearchCompositionEnd} placeholder="Tìm sản phẩm..." className="min-h-11 rounded-full border border-input bg-background px-4 py-2 text-sm md:col-span-2" />
-          <select value={category} onChange={(e) => updateParam('category', e.target.value)} className="min-h-11 rounded-full border border-input bg-background px-4 py-2 text-sm"><option value="">Tất cả danh mục</option>{(tax.productCategories || []).map((item) => <option key={item.uuid || item.slug} value={item.slug}>{item.name}</option>)}</select>
-          <select value={brand} onChange={(e) => updateParam('brand', e.target.value)} className="min-h-11 rounded-full border border-input bg-background px-4 py-2 text-sm"><option value="">Tất cả thương hiệu</option>{(tax.productBrands || []).map((item) => <option key={item.uuid || item.slug} value={item.slug}>{item.name}</option>)}</select>
-          <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} className="min-h-11 rounded-full border border-input bg-background px-4 py-2 text-sm md:col-span-2"><option value="latest">Mới nhất</option><option value="popular">Phổ biến</option><option value="price_asc">Giá thấp đến cao</option><option value="price_desc">Giá cao đến thấp</option><option value="name_asc">Tên A-Z</option></select>
+        <div className="-mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist" aria-label="Nhóm sản phẩm chính">
+          {HERO_PRODUCT_GROUPS.map((item) => {
+            const selected = group === item.id;
+            return <button type="button" role="tab" aria-selected={selected} key={item.id} onClick={() => selectGroup(selected ? "" : item.id)} className={cn("min-h-14 rounded-xl border px-3 py-3 text-[0.75rem] font-semibold uppercase tracking-[0.075em] shadow-sm transition-all duration-300 sm:text-[0.8rem]", selected ? "border-primary bg-primary text-primary-foreground shadow-md" : "border-border bg-card text-foreground hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary")}>{item.label}</button>;
+          })}
         </div>
-        {error ? <div className="mt-6 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
-        <div className="mt-6 text-sm text-muted-foreground">{loading ? 'Đang tải...' : `Đang hiển thị ${products.length}/${meta.total || products.length} sản phẩm`}</div>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {loading ? [1, 2, 3, 4, 5, 6, 7, 8].map((n) => <div key={n} className="h-96 animate-pulse rounded-[1.75rem] bg-secondary/60" />) : products.map((product) => <ProductCard key={product.uuid || product.id} product={product} />)}
+
+        <div className="sticky top-[4.5rem] z-20 -mx-4 mt-7 border-y border-border bg-background/96 px-4 py-4 backdrop-blur-xl lg:top-[6.35rem] lg:mx-0 lg:grid lg:grid-cols-[minmax(16rem,1fr)_repeat(3,12rem)] lg:gap-2 lg:rounded-xl lg:border lg:px-3">
+          <label className="relative block"><span className="sr-only">Tìm sản phẩm</span><input value={searchInput} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={(event) => { composing.current = false; setParam("search", event.currentTarget.value.trim()); }} onChange={(event) => { setSearchInput(event.target.value); if (!composing.current) setParam("search", event.target.value.trim()); }} placeholder="Tìm sản phẩm..." className="h-12 w-full rounded-lg border border-input bg-card px-4 text-[0.92rem] outline-none transition-colors focus:border-primary" />{searchInput ? <button type="button" onClick={() => { setSearchInput(""); setParam("search", ""); }} className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full hover:bg-secondary" aria-label="Xóa từ khóa"><X className="size-4" /></button> : null}</label>
+          <div className="mt-2 grid grid-cols-2 gap-2 lg:mt-0 lg:contents">
+            <select value={category} onChange={(event) => setParam("category", event.target.value)} className="h-12 rounded-lg border border-input bg-card px-3 text-[0.8rem] outline-none transition-colors focus:border-primary"><option value="">{activeGroup ? `Mọi mục ${activeGroup.label.toLowerCase()}` : "Mọi danh mục"}</option>{categoryOptions.map((item) => <option key={item.uuid || item.slug} value={item.slug}>{item.name}</option>)}</select>
+            <select value={brand} onChange={(event) => setParam("brand", event.target.value)} className="h-12 rounded-lg border border-input bg-card px-3 text-[0.8rem] outline-none transition-colors focus:border-primary"><option value="">Mọi thương hiệu</option>{tax.productBrands?.map((item) => <option key={item.uuid || item.slug} value={item.slug}>{item.name}</option>)}</select>
+            <select value={sort} onChange={(event) => setParam("sort", event.target.value)} className="col-span-2 h-12 rounded-lg border border-input bg-card px-3 text-[0.8rem] outline-none transition-colors focus:border-primary lg:col-span-1"><option value="latest">Mới nhất</option><option value="popular">Được quan tâm</option><option value="price_asc">Giá thấp đến cao</option><option value="price_desc">Giá cao đến thấp</option><option value="name_asc">Tên A–Z</option></select>
+          </div>
         </div>
-        {!loading && !products.length ? <div className="mt-8 rounded-[2rem] border border-dashed p-8 text-center text-muted-foreground sm:p-10">Chưa có sản phẩm phù hợp.</div> : null}
-        <div className="mt-10 grid gap-3 sm:flex sm:items-center sm:justify-center"><Button variant="outline" disabled={!meta.hasPreviousPage} onClick={() => updateParam('page', String(Math.max(1, page - 1)))}>Trang trước</Button><span className="text-center text-sm text-muted-foreground">Trang {meta.page || page}/{meta.totalPages || 1}</span><Button variant="outline" disabled={!meta.hasNextPage} onClick={() => updateParam('page', String(page + 1))}>Trang sau</Button></div>
+
+        <div className="flex items-center justify-between border-b border-border py-5 text-[0.8rem] text-muted-foreground"><span>{loading ? "Đang cập nhật..." : `${meta.total || products.length} sản phẩm`}</span>{hasFilters ? <button type="button" className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-primary transition-colors hover:bg-primary/8" onClick={() => setParams({})}><SlidersHorizontal className="size-3.5" /> Xóa bộ lọc</button> : null}</div>
+        {error ? <StatePanel type="error" title="Chưa tải được sản phẩm" description={error} actionLabel="Thử lại" onAction={() => setParams((current) => new URLSearchParams(current))} className="mt-8" /> : null}
+        {!error ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{loading ? Array.from({ length: 8 }, (_, index) => <div key={index} className="h-[31rem] animate-pulse rounded-2xl bg-secondary" />) : products.map((product, index) => <Reveal key={product.uuid || product.id} delay={(index % 4) * 65}><ProductCard product={product} /></Reveal>)}</div> : null}
+        {!loading && !error && !products.length ? <StatePanel title="Không tìm thấy sản phẩm" description="Hãy thử một nhóm, danh mục hoặc từ khóa khác." actionLabel="Xóa bộ lọc" onAction={() => setParams({})} className="mt-8" /> : null}
+        {!error && meta.totalPages > 1 ? <nav className="mt-14 flex items-center justify-center gap-3" aria-label="Phân trang"><Button variant="outline" disabled={!meta.hasPreviousPage} onClick={() => setParam("page", String(page - 1))}>Trang trước</Button><span className="min-w-20 text-center text-sm text-muted-foreground">{meta.page || page} / {meta.totalPages}</span><Button variant="outline" disabled={!meta.hasNextPage} onClick={() => setParam("page", String(page + 1))}>Trang sau</Button></nav> : null}
       </Container>
-    </PageShell>
+    </div>
   );
 }

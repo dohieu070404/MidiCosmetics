@@ -7,6 +7,7 @@ const q = (params = {}) => ({ params: Object.fromEntries(Object.entries(params).
 export const publicApi = {
   home: () => apiClient.get('/home'),
   homepage: () => apiClient.get('/homepage'),
+  about: () => apiClient.get('/about'),
   taxonomies: () => apiClient.get('/taxonomies'),
   listBlogs: (params) => apiClient.get('/blogs', q(params)),
   getBlog: (slug) => apiClient.get(`/blogs/${slug}`),
@@ -14,6 +15,12 @@ export const publicApi = {
   listProducts: (params) => apiClient.get('/products', q(params)),
   getProduct: (slug) => apiClient.get(`/products/${slug}`),
   relatedProducts: (slug) => apiClient.get(`/products/${slug}/related`),
+  listCollections: (params) => apiClient.get('/collections', q(params)),
+  getCollection: (slug) => apiClient.get(`/collections/${slug}`),
+  createQuote: (payload) => apiClient.post('/quotes', payload),
+  getQuote: (token) => apiClient.get(`/quotes/${token}`),
+  markMessengerOpened: (token) => apiClient.post(`/quotes/${token}/messenger-opened`),
+  trackInterest: (payload) => apiClient.post('/analytics/events', payload),
 };
 
 export const mediaUrl = (url) => {

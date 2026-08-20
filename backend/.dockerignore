@@ -5,6 +5,8 @@ Dockerfile*
 .env
 .env.*
 coverage
+.private
+private_uploads
 .git
 .gitignore
 README.md

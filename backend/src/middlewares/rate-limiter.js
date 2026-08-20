@@ -41,3 +41,27 @@ export const uploadRateLimiter = rateLimit({
   legacyHeaders: false,
   handler: buildHandler('Quá nhiều yêu cầu upload/import. Vui lòng thử lại sau.'),
 });
+
+export const quoteRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 6,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: buildHandler('Bạn đã tạo quá nhiều phiếu. Vui lòng thử lại sau.'),
+});
+
+export const captchaRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: buildHandler('Quá nhiều lần xác nhận chống spam. Vui lòng thử lại sau.'),
+});
+
+export const analyticsRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: buildHandler('Quá nhiều sự kiện. Vui lòng thử lại sau.'),
+});

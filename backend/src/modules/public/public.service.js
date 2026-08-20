@@ -25,6 +25,14 @@ const productInclude = {
 const publicProductWhere = { deletedAt: null, status: 'ACTIVE' };
 const publicPostWhere = { deletedAt: null, status: 'PUBLISHED' };
 
+const productCategoryGroups = Object.freeze({
+  skincare: ['tay-trang', 'sua-rua-mat', 'toner', 'serum', 'kem-duong', 'mat-na', 'dan-mun', 'xit-khoang', 'tay-da-chet', 'kem-chong-nang'],
+  makeup: ['son', 'cushion', 'kem-nen', 'kem-lot', 'che-khuyet-diem', 'phan-phu', 'xit-khoa-nen', 'mascara', 'ke-mat', 'ke-may', 'phan-mat-ma', 'khoi-highlihght'],
+  'body-hair': ['kem-body', 'sua-tam', 'tay-da-chet-body', 'tay-long', 'body-mist', 'lan-nach', 'ddvs', 'kem-danh-rang', 'dau-goi', 'da-dau'],
+  fragrance: ['nuoc-hoa'],
+  accessories: ['phu-kien', 'mut-trang-diem', 'bong-tay-trang', 'kep-mi', 'kich-mi'],
+});
+
 const toPlainNumber = (value) => {
   if (value === null || value === undefined || value === '') return null;
   const raw = typeof value === 'object' && typeof value.toString === 'function' ? value.toString() : String(value);
@@ -80,6 +88,10 @@ const serializePublicProduct = (product) => {
     uuid: product.uuid,
     name: product.name,
     slug: product.slug,
+    sku: product.sku || null,
+    unit: product.unit || null,
+    stock: Number(product.stock || 0),
+    status: product.status,
     price,
     currency: product.currency || 'VND',
     formattedPrice: formatPublicPrice(product.price, product.currency),
@@ -121,6 +133,7 @@ const serializeHomepagePost = (post) => post ? {
 } : null;
 
 const serializeHomepagePosts = (posts = []) => posts.map(serializeHomepagePost).filter(Boolean);
+const PUBLIC_HOMEPAGE_SECTION_TYPES = new Set(['HERO', 'FEATURED_PRODUCTS', 'CUSTOM_TEXT', 'FEATURED_POSTS']);
 
 const serializeHomepageCategory = (category) => category ? {
   id: category.uuid,
@@ -139,15 +152,39 @@ const safePublicSectionConfig = (section) => {
     ctaHref: config.ctaHref || '/products',
     secondaryLabel: serializePublicText(config.secondaryLabel || 'Đọc blog', 60),
     secondaryHref: config.secondaryHref || '/blog',
+    slides: Array.isArray(config.slides) ? config.slides.slice(0, 4).map((slide) => ({
+      id: serializePublicText(slide.id || '', 40),
+      kicker: serializePublicText(slide.kicker || '', 80),
+      title: serializePublicText(slide.title || '', 100),
+      subtitle: serializePublicText(slide.subtitle || '', 300),
+      imageUrl: slide.imageUrl || '',
+      href: slide.href || '/products',
+      mobilePosition: serializePublicText(slide.mobilePosition || 'center center', 40),
+    })) : [],
   };
-  if (section.type === 'BRAND_INTRO') return { body: serializePublicText(config.body || '', 1500), imageUrl: config.imageUrl || '' };
-  if (section.type === 'CUSTOM_TEXT') return { body: serializePublicText(config.body || '', 2000) };
-  if (['FEATURED_PRODUCTS', 'FEATURED_POSTS', 'FEATURED_CATEGORIES'].includes(section.type)) return { limit: Math.min(12, Math.max(1, Number(config.limit || 6))) };
+  if (section.type === 'BRAND_INTRO') return {
+    eyebrow: serializePublicText(config.eyebrow || '', 80),
+    body: serializePublicText(config.body || '', 1500),
+    imageUrl: config.imageUrl || '',
+    ctaLabel: serializePublicText(config.ctaLabel || 'Tìm sản phẩm dành cho bạn', 60),
+    ctaHref: config.ctaHref || '/products',
+  };
+  if (section.type === 'CUSTOM_TEXT') return {
+    eyebrow: serializePublicText(config.eyebrow || '', 80),
+    body: serializePublicText(config.body || '', 2000),
+    imageUrl: config.imageUrl || '',
+    ctaLabel: serializePublicText(config.ctaLabel || 'Khám phá nước hoa', 60),
+    ctaHref: config.ctaHref || '/products?group=fragrance',
+  };
+  if (['FEATURED_PRODUCTS', 'FEATURED_POSTS'].includes(section.type)) return {
+    eyebrow: serializePublicText(config.eyebrow || '', 80),
+    limit: Math.min(12, Math.max(1, Number(config.limit || 6))),
+  };
   return {};
 };
 
-const buildPublicHomepageSections = ({ sections, featuredProducts, featuredBlogs, productCategories }) => sections
-  .filter((section) => section.isEnabled)
+const buildPublicHomepageSections = ({ sections, featuredProducts, featuredBlogs }) => sections
+  .filter((section) => section.isEnabled && PUBLIC_HOMEPAGE_SECTION_TYPES.has(section.type))
   .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
   .map((section) => {
     const config = safePublicSectionConfig(section);
@@ -162,11 +199,10 @@ const buildPublicHomepageSections = ({ sections, featuredProducts, featuredBlogs
     if (section.type === 'HERO') return { ...base, heroProduct: featuredProducts[0] || null };
     if (section.type === 'FEATURED_PRODUCTS') return { ...base, items: featuredProducts.slice(0, config.limit || 8) };
     if (section.type === 'FEATURED_POSTS') return { ...base, items: serializeHomepagePosts(featuredBlogs).slice(0, config.limit || 6) };
-    if (section.type === 'FEATURED_CATEGORIES') return { ...base, items: productCategories.map(serializeHomepageCategory).filter(Boolean).slice(0, config.limit || 8) };
     return base;
   })
   .filter((section) => {
-    if (['FEATURED_PRODUCTS', 'FEATURED_POSTS', 'FEATURED_CATEGORIES'].includes(section.type)) return Array.isArray(section.items) && section.items.length > 0;
+    if (['FEATURED_PRODUCTS', 'FEATURED_POSTS'].includes(section.type)) return Array.isArray(section.items) && section.items.length > 0;
     return true;
   });
 
@@ -194,6 +230,25 @@ const findProduct = async (slug) => {
 
 
 export const publicService = {
+  async getAbout() {
+    const setting = await prisma.siteSetting.findFirst({ where: { key: 'about.page', isPublic: true }, select: { value: true, updatedAt: true } });
+    const value = setting?.value && typeof setting.value === 'object' && !Array.isArray(setting.value) ? setting.value : {};
+    const imageUrl = String(value.imageUrl || '').trim();
+    return {
+      content: {
+        eyebrow: serializePublicText(value.eyebrow || '', 80),
+        title: serializePublicText(value.title || '', 240),
+        intro: serializePublicText(value.intro || '', 1000),
+        imageUrl: /^(?:https?:\/\/|\/(?:uploads|images)\/)/i.test(imageUrl) ? imageUrl : '',
+        sectionEyebrow: serializePublicText(value.sectionEyebrow || '', 80),
+        sectionTitle: serializePublicText(value.sectionTitle || '', 240),
+        paragraphOne: serializePublicText(value.paragraphOne || '', 2000),
+        paragraphTwo: serializePublicText(value.paragraphTwo || '', 2000),
+      },
+      updatedAt: setting?.updatedAt || null,
+    };
+  },
+
   async getHome() {
     const sections = await loadHomepageSections();
     const [featuredBlogs, featuredProducts, blogCategories, productCategories, brands] = await Promise.all([
@@ -204,7 +259,7 @@ export const publicService = {
       prisma.productBrand.findMany({ where: { deletedAt: null }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], take: 10, select: brandSelect }),
     ]);
     const publicFeaturedProducts = serializePublicProducts(featuredProducts);
-    const publicSections = buildPublicHomepageSections({ sections, featuredProducts: publicFeaturedProducts, featuredBlogs, productCategories });
+    const publicSections = buildPublicHomepageSections({ sections, featuredProducts: publicFeaturedProducts, featuredBlogs });
     return {
       sections: publicSections,
       featuredBlogs: serializeHomepagePosts(featuredBlogs),
@@ -264,10 +319,16 @@ export const publicService = {
 
 
   async listProducts(query) {
-    const { page, limit, search, category, brand, sort } = query;
+    const { page, limit, search, category, group, brand, sort } = query;
+    const categorySlugs = group ? productCategoryGroups[group] || [] : [];
+    const categoryFilter = category
+      ? { slug: category, deletedAt: null }
+      : categorySlugs.length
+        ? { slug: { in: categorySlugs }, deletedAt: null }
+        : null;
     const where = {
       ...publicProductWhere,
-      ...(category ? { category: { slug: category, deletedAt: null } } : {}),
+      ...(categoryFilter ? { category: categoryFilter } : {}),
       ...(brand ? { brand: { slug: brand, deletedAt: null } } : {}),
       ...buildSearchWhere(['name', 'shortDescription', 'description'], search),
     };
@@ -291,6 +352,22 @@ export const publicService = {
     const productRelatedOr = [{ categoryId: product.categoryId || undefined }, { brandId: product.brandId || undefined }].filter((item) => Object.values(item)[0] !== undefined);
     const related = await prisma.product.findMany({ where: { ...publicProductWhere, id: { not: product.id }, ...(productRelatedOr.length ? { OR: productRelatedOr } : {}) }, include: productInclude, orderBy: orderProducts('latest'), take: 6 });
     return serializePublicProducts(related);
+  },
+
+  async listCollections(query) {
+    const { page, limit, search } = query;
+    const where = { deletedAt: null, isActive: true, ...buildSearchWhere(['name', 'description'], search) };
+    const [items, total] = await Promise.all([
+      prisma.productCollection.findMany({ where, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }], ...getPaginationArgs({ page, limit }), include: { products: { take: 1, orderBy: { sortOrder: 'asc' }, include: { product: { include: productInclude } } } } }),
+      prisma.productCollection.count({ where }),
+    ]);
+    return { items: items.map((item) => ({ uuid: item.uuid, name: item.name, slug: item.slug, description: serializePublicText(item.description || '', 500), coverImage: item.coverImageUrl || serializePublicImage(item.products?.[0]?.product?.images?.[0]) })), pagination: buildPagination({ page, limit, total }) };
+  },
+
+  async getCollection(slug) {
+    const collection = await prisma.productCollection.findFirst({ where: { OR: [{ slug }, { uuid: slug }], deletedAt: null, isActive: true }, include: { products: { orderBy: { sortOrder: 'asc' }, include: { product: { include: productInclude } } } } });
+    if (!collection) throw ApiError.notFound('Collection not found');
+    return { collection: { uuid: collection.uuid, name: collection.name, slug: collection.slug, description: serializePublicText(collection.description || '', 500), coverImage: collection.coverImageUrl || serializePublicImage(collection.products?.[0]?.product?.images?.[0]), seoTitle: collection.seoTitle, seoDescription: collection.seoDescription }, products: serializePublicProducts(collection.products.map((item) => item.product).filter((product) => product.status === 'ACTIVE' && !product.deletedAt)) };
   },
 
   async getTaxonomies() {

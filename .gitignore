@@ -1,4 +1,3 @@
-```gitignore
 # =========================
 # Environment files / Secrets
 # =========================
@@ -19,6 +18,7 @@
 .env.production
 .env.test
 .env.docker
+.env.docker.local
 
 backend/.env
 backend/.env.*
@@ -78,6 +78,10 @@ lerna-debug.log*
 
 uploads
 backend/uploads
+.private
+**/.private
+private_uploads
+**/private_uploads
 tmp
 temp
 .cache
@@ -147,4 +151,3 @@ coverage
 # Keep project source clean
 *.bak
 *.swp
-```

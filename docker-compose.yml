@@ -1,4 +1,24 @@
 services:
+  database:
+    image: postgres:16-alpine
+    container_name: midi_database
+    restart: unless-stopped
+    env_file:
+      - ./.env.docker.local
+    environment:
+      POSTGRES_DB: midi_cosmetics
+      POSTGRES_USER: midi
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U midi -d midi_cosmetics"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - midi_network
+
   backend:
     build:
       context: ./backend
@@ -6,14 +26,62 @@ services:
     container_name: midi_backend
     restart: unless-stopped
     env_file:
-      - ./backend/.env
+      - ./.env.docker.local
     environment:
-      # Backend reads DATABASE_URL/DIRECT_URL from backend/.env and connects directly to Supabase.
+      # Local-only runtime. Secrets and database URLs come from the ignored file above.
+      NODE_ENV: development
       PORT: 8080
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      APP_NAME: Midi Cosmetics API
+      API_PREFIX: /api/v1
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      BCRYPT_SALT_ROUNDS: "12"
+      CORS_ORIGIN: http://localhost:5173,http://localhost:8081
+      RATE_LIMIT_WINDOW_MS: "900000"
+      RATE_LIMIT_MAX: "300"
+      AUTH_RATE_LIMIT_MAX: "20"
+      LOG_LEVEL: debug
+      LOGGER_PRETTY: "true"
+      # Nginx is exactly one hop in front of Express.
+      TRUST_PROXY: "1"
+      ADMIN_ALLOWED_EMAILS: ""
+      ADMIN_BOOTSTRAP_TOKEN: ""
+      ADMIN_BOOTSTRAP_ENABLED: "false"
+      ADMIN_LOGIN_PATH: /quan-tri-midi-secure-2026
+      FRONTEND_URL: http://localhost:8081
+      MESSENGER_URL: https://m.me/61580016268412
+      QUOTE_EXPIRY_DAYS: "7"
+      # Tạm tắt ở local. Production bắt buộc bật và cấu hình Google reCAPTCHA.
+      QUOTE_CAPTCHA_ENABLED: "false"
+      RECAPTCHA_SECRET_KEY: ""
+      RECAPTCHA_ALLOWED_HOSTNAMES: localhost,127.0.0.1
+      RUN_MIGRATIONS: "true"
+      DATABASE_SYNC_STRATEGY: migrate
+      SEED_DATABASE: "true"
+      AUTO_RESET_FAILED_MIGRATIONS: "false"
+      UPLOAD_DRIVER: local
+      UPLOAD_MAX_FILE_SIZE_MB: "5"
+      UPLOAD_IMAGE_MAX_FILE_SIZE_MB: "5"
+      UPLOAD_SPREADSHEET_MAX_FILE_SIZE_MB: "10"
+      UPLOAD_DIR: uploads
+      PRIVATE_UPLOAD_DIR: .private/imports
+      PUBLIC_UPLOAD_BASE_URL: ""
+      CLOUDINARY_CLOUD_NAME: ""
+      CLOUDINARY_API_KEY: ""
+      CLOUDINARY_API_SECRET: ""
+      SMTP_HOST: ""
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      MAIL_FROM: ""
+      ADMIN_ALERT_EMAIL: ""
+    depends_on:
+      database:
+        condition: service_healthy
     volumes:
       - backend_uploads:/app/uploads
+      - backend_private_uploads:/app/.private/imports
     healthcheck:
       test: ["CMD", "node", "src/scripts/healthcheck.js"]
       interval: 15s
@@ -28,19 +96,21 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_APP_NAME: ${VITE_APP_NAME:-Midi Cosmetics}
-        # In Docker, nginx proxies /api/* to the backend service.
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
-        VITE_API_ORIGIN: ${VITE_API_ORIGIN:-http://localhost:8081}
-        VITE_ENABLE_API_MOCKING: ${VITE_ENABLE_API_MOCKING:-false}
-        VITE_ADMIN_LOGIN_PATH: ${VITE_ADMIN_LOGIN_PATH:-/quan-tri-midi-secure-2026}
+        VITE_APP_NAME: Midi Cosmetics
+        VITE_API_BASE_URL: /api/v1
+        VITE_API_ORIGIN: http://localhost:8081
+        VITE_ENABLE_API_MOCKING: "false"
+        VITE_ADMIN_LOGIN_PATH: /quan-tri-midi-secure-2026
+        VITE_MESSENGER_URL: https://m.me/61580016268412
+        VITE_QUOTE_CAPTCHA_ENABLED: "false"
+        VITE_RECAPTCHA_SITE_KEY: ""
     container_name: midi_frontend
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "${FRONTEND_PORT:-8081}:80"
+      - "127.0.0.1:8081:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
       interval: 15s
@@ -51,7 +121,9 @@ services:
       - midi_network
 
 volumes:
+  postgres_data:
   backend_uploads:
+  backend_private_uploads:
 
 networks:
   midi_network:

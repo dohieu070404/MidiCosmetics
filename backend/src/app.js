@@ -22,6 +22,7 @@ export const createApp = () => {
   const app = express();
 
   app.disable('x-powered-by');
+  app.set('json escape', true);
   app.set('trust proxy', env.trustProxy);
 
   configureCloudinary();
@@ -37,6 +38,17 @@ export const createApp = () => {
         if (res.statusCode >= 400) return 'warn';
         return 'info';
       },
+      ...(env.isProduction ? {
+        serializers: {
+          err(error) {
+            return {
+              type: error?.name || 'Error',
+              statusCode: error?.statusCode || undefined,
+              message: '[REDACTED_IN_PRODUCTION]',
+            };
+          },
+        },
+      } : {}),
       customProps: (req) => ({ requestId: req.id }),
     })
   );
@@ -51,20 +63,44 @@ export const createApp = () => {
   app.use(compression());
   app.use(hpp());
   app.use(express.json({ limit: '1mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+  app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(cookieParser);
-  app.use('/uploads', express.static(getUploadDir(), { immutable: true, maxAge: '1d' }));
+  app.use('/uploads', (req, res, next) => {
+    if (!/^\/[a-zA-Z0-9._-]+\.(?:jpe?g|png|webp)$/i.test(req.path) || req.path.includes('..')) {
+      return res.status(404).end();
+    }
+    return next();
+  });
+  app.use('/uploads', express.static(getUploadDir(), {
+    dotfiles: 'deny',
+    index: false,
+    immutable: true,
+    maxAge: '1d',
+    setHeaders(res) {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Disposition', 'inline');
+    },
+  }));
+  app.use(`${env.apiPrefix}/auth`, (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    return next();
+  });
+  app.use(`${env.apiPrefix}/admin`, (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    return next();
+  });
   app.use(responseFormatter);
   app.use(globalRateLimiter);
 
   app.get('/health', healthController.ready);
   app.get('/', (req, res) =>
     res.success({
-      message: 'Midi Cosmetics API is running',
-      data: {
+      message: 'API is running',
+      data: env.isProduction ? { status: 'ok' } : {
         service: env.appName,
         apiPrefix: env.apiPrefix,
-        docs: 'Admin catalog, blog, media and Kiot Excel import APIs',
       },
     })
   );

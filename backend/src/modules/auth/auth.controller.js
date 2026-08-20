@@ -1,14 +1,15 @@
 import { HTTP_STATUS } from '../../constants/http-status.js';
 import { asyncHandler } from '../../utils/async-handler.js';
+import { env } from '../../config/env.js';
 import { authService } from './auth.service.js';
 
 const getIpAddress = (req) => req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || null;
-const refreshCookieName = 'midi_refresh_token';
+const refreshCookieName = env.isProduction ? '__Secure-midi_refresh_token' : 'midi_refresh_token';
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  path: '/api/v1/auth',
+  secure: env.isProduction,
+  sameSite: env.isProduction ? 'none' : 'lax',
+  path: `${env.apiPrefix}/auth`,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 const setRefreshCookie = (res, token) => res.cookie(refreshCookieName, token, refreshCookieOptions);
@@ -48,8 +49,6 @@ export const authController = {
     clearRefreshCookie(res);
     return res.success({ statusCode: HTTP_STATUS.OK, message: 'Logout successful', data: {} });
   }),
-
-  registerDisabled: asyncHandler(async (req, res) => res.status(403).json({ success: false, message: 'Public registration is disabled', errors: [{ field: null, code: 'REGISTRATION_DISABLED', message: 'This project only uses one shop admin account configured by environment variables' }] })),
 
   me: asyncHandler(async (req, res) => res.success({ statusCode: HTTP_STATUS.OK, message: 'Authenticated user fetched successfully', data: { user: req.user } })),
 };

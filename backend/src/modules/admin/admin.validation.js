@@ -59,14 +59,14 @@ const safeCode = (max = 100) => safeText(z.string().trim().max(max).optional().n
 const safeHttpOrUploadUrl = (max = 1000) => safeText(z.string().trim().max(max).optional().nullable()).refine((value) => {
   if (value === undefined || value === null || value === '') return true;
   const text = String(value).trim();
-  if (/^\/uploads\/[a-zA-Z0-9._-]+$/.test(text) && !text.includes('..')) return true;
+  if (/^\/(?:uploads|images|brand)\/[a-zA-Z0-9._/-]+$/.test(text) && !text.includes('..') && !text.includes('//')) return true;
   try {
     const parsed = new URL(text);
     return ['http:', 'https:'].includes(parsed.protocol) && !isPrivateOrLocalHostname(parsed.hostname);
   } catch {
     return false;
   }
-}, 'URL phải bắt đầu bằng http://, https:// hoặc /uploads/<filename>');
+}, 'URL phải bắt đầu bằng http://, https:// hoặc đường dẫn ảnh nội bộ hợp lệ.');
 const listableStatus = z.enum(['DRAFT', 'PUBLISHED', 'ACTIVE', 'INACTIVE', 'ARCHIVED', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'VALID', 'INVALID', 'SUCCESS']);
 
 const booleanQuery = z.preprocess((value) => {
@@ -99,7 +99,20 @@ export const listProductSchema = z.object({
     status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED']).optional(),
     categoryUuid: z.string().uuid().optional(),
     brandUuid: z.string().uuid().optional(),
+    deleted: z.enum(['active', 'trashed', 'all']).optional().default('active'),
   }),
+});
+
+export const productBulkSchema = z.object({
+  body: z.object({ uuids: z.array(z.string().uuid()).min(1).max(100) }).strict(),
+  params: emptyParams,
+  query: z.object({}).optional(),
+});
+
+export const productPermanentDeleteSchema = z.object({
+  body: z.object({ uuids: z.array(z.string().uuid()).min(1).max(100), confirmation: z.literal('XOA VINH VIEN') }).strict(),
+  params: emptyParams,
+  query: z.object({}).optional(),
 });
 
 export const featuredToggleSchema = z.object({
@@ -211,6 +224,9 @@ export const collectionSchema = z.object({
     name: z.string().trim().min(1).max(150),
     slug: safeSlug,
     description: optionalString(5000),
+    coverImageUrl: safeHttpOrUploadUrl(1000),
+    seoTitle: optionalString(255),
+    seoDescription: optionalString(500),
     isActive: z.boolean().default(true),
     sortOrder: z.coerce.number().int().min(0).default(0),
   }),
@@ -222,6 +238,95 @@ export const updateCollectionSchema = z.object({
   body: collectionSchema.shape.body.partial().strict(),
   params: uuidParams,
   query: z.object({}).optional(),
+});
+
+export const collectionProductsSchema = z.object({
+  body: z.object({
+    items: z.array(z.object({
+      productUuid: z.string().uuid(),
+      sortOrder: z.coerce.number().int().min(0).max(9999),
+    }).strict()).max(250),
+  }).strict(),
+  params: uuidParams,
+  query: z.object({}).optional(),
+});
+
+export const mediaUpdateSchema = z.object({
+  body: z.object({ altText: optionalString(255) }).strict(),
+  params: uuidParams,
+  query: z.object({}).optional(),
+});
+
+export const mediaUploadSchema = z.object({
+  body: z.object({ altText: optionalString(255) }).strict().optional().default({}),
+  params: emptyParams,
+  query: z.object({}).optional(),
+});
+
+export const mediaListSchema = z.object({
+  body: z.object({}).optional(),
+  params: emptyParams,
+  query: paginationQuerySchema.extend({
+    provider: z.enum(['LOCAL', 'CLOUDINARY']).optional(),
+    mimeType: z.string().trim().max(100).optional(),
+    uploaderUuid: z.string().uuid().optional(),
+    from: z.coerce.date().optional(),
+    to: z.coerce.date().optional(),
+  }),
+});
+
+export const quoteListSchema = z.object({
+  body: z.object({}).optional(),
+  params: emptyParams,
+  query: paginationQuerySchema.extend({
+    status: z.enum(['CREATED', 'MESSENGER_OPENED', 'PROCESSED', 'EXPIRED']).optional(),
+    archived: z.enum(['active', 'archived', 'all']).optional().default('active'),
+    from: z.coerce.date().optional(),
+    to: z.coerce.date().optional(),
+  }),
+});
+
+export const quoteBulkArchiveSchema = z.object({
+  body: z.object({
+    mode: z.enum(['SELECTED', 'UNOPENED']),
+    uuids: z.array(z.string().uuid()).max(100).optional().default([]),
+  }).strict().refine((value) => value.mode === 'UNOPENED' || value.uuids.length > 0, 'Hãy chọn ít nhất một phiếu.'),
+  params: emptyParams,
+  query: z.object({}).optional(),
+});
+
+export const quoteBulkRestoreSchema = z.object({
+  body: z.object({ uuids: z.array(z.string().uuid()).min(1).max(100) }).strict(),
+  params: emptyParams,
+  query: z.object({}).optional(),
+});
+
+export const quoteStatusSchema = z.object({
+  body: z.object({ status: z.enum(['CREATED', 'MESSENGER_OPENED', 'PROCESSED', 'EXPIRED']) }).strict(),
+  params: uuidParams,
+  query: z.object({}).optional(),
+});
+
+export const analyticsQuerySchema = z.object({
+  body: z.object({}).optional(),
+  params: emptyParams,
+  query: z.object({
+    from: z.coerce.date().optional(),
+    to: z.coerce.date().optional(),
+  }).optional().default({}),
+});
+
+export const adminLogListSchema = z.object({
+  body: z.object({}).optional(),
+  params: emptyParams,
+  query: paginationQuerySchema.extend({
+    status: z.string().trim().max(40).optional(),
+    type: z.string().trim().max(120).optional(),
+    action: z.string().trim().max(120).optional(),
+    actor: z.string().trim().max(191).optional(),
+    from: z.coerce.date().optional(),
+    to: z.coerce.date().optional(),
+  }),
 });
 
 export const blogPostSchema = z.object({
@@ -316,15 +421,26 @@ const homepageText = (max = 500) => z.string().trim().max(max).optional().nullab
   if (value === undefined || value === null || value === '') return true;
   return !/<\/?script|javascript:|onerror\s*=|onclick\s*=|onload\s*=/i.test(String(value));
 }, 'Nội dung homepage không được chứa script hoặc event handler');
+const homepageSafeHref = z.string().trim().max(120).regex(/^\/(?:products|blog|about)(?:\/[-a-zA-Z0-9_/?=&]*|\?[-a-zA-Z0-9_=&-]+)?$/, 'CTA chỉ được trỏ tới route public an toàn').optional().nullable();
+const homepageHeroSlideSchema = z.object({
+  id: z.enum(['skincare', 'makeup', 'body-hair', 'fragrance']),
+  kicker: homepageText(80),
+  title: homepageText(100),
+  subtitle: homepageText(300),
+  imageUrl: safeHttpOrUploadUrl(1000),
+  href: homepageSafeHref,
+  mobilePosition: z.string().trim().max(40).regex(/^(?:(?:left|center|right|\d{1,3}%)(?:\s+(?:top|center|bottom|\d{1,3}%))?)$/, 'Vị trí ảnh mobile không hợp lệ').optional().nullable(),
+}).strip();
 const homepageSectionConfigSchema = z.object({
   eyebrow: homepageText(80),
   imageUrl: safeHttpOrUploadUrl(1000),
   ctaLabel: homepageText(60),
-  ctaHref: z.string().trim().max(120).regex(/^\/(products|blog|about)(\/[-a-zA-Z0-9_/?=&]*)?$/, 'CTA chỉ được trỏ tới route public an toàn').optional().nullable(),
+  ctaHref: homepageSafeHref,
   secondaryLabel: homepageText(60),
-  secondaryHref: z.string().trim().max(120).regex(/^\/(products|blog|about)(\/[-a-zA-Z0-9_/?=&]*)?$/, 'CTA phụ chỉ được trỏ tới route public an toàn').optional().nullable(),
+  secondaryHref: homepageSafeHref,
   body: homepageText(2000),
   limit: z.coerce.number().int().min(1).max(12).optional(),
+  slides: z.array(homepageHeroSlideSchema).max(4).optional(),
 }).strip();
 
 export const homepageSectionParamsSchema = z.object({

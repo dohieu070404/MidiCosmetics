@@ -9,7 +9,19 @@ export function AdminDashboardPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    adminApi.dashboard().then((res) => setData(res.data)).catch((err) => setError(err.message));
+    Promise.all([
+      adminApi.dashboard(),
+      adminApi.listQuotes({ limit: 1, status: 'CREATED' }),
+      adminApi.listQuotes({ limit: 1, status: 'MESSENGER_OPENED' }),
+      adminApi.listQuotes({ limit: 1, status: 'PROCESSED' }),
+      adminApi.interestAnalytics({}),
+    ]).then(([dashboard, newQuotes, openedQuotes, processedQuotes, interest]) => setData({
+      ...dashboard.data,
+      newQuotes: newQuotes.meta?.total ?? newQuotes.data?.quotes?.length ?? 0,
+      openedQuotes: openedQuotes.meta?.total ?? openedQuotes.data?.quotes?.length ?? 0,
+      processedQuotes: processedQuotes.meta?.total ?? processedQuotes.data?.quotes?.length ?? 0,
+      interest: interest.data,
+    })).catch((err) => setError(err.message));
   }, []);
 
   const cards = useMemo(() => {
@@ -20,6 +32,9 @@ export function AdminDashboardPage() {
       { label: 'Sản phẩm đề xuất', value: counters.featuredProducts || 0 },
       { label: 'Bài viết đề xuất', value: counters.featuredPosts || 0 },
       { label: 'Ảnh đã tải', value: counters.mediaAssets || 0 },
+      { label: 'Báo giá mới', value: data?.newQuotes || 0 },
+      { label: 'Đã mở Messenger', value: data?.openedQuotes || 0 },
+      { label: 'Phiếu đã xử lý', value: data?.processedQuotes || 0 },
     ];
   }, [data]);
 
@@ -27,18 +42,19 @@ export function AdminDashboardPage() {
     { label: 'Thêm sản phẩm', href: ROUTE_PATHS.adminProducts, primary: true },
     { label: 'Import Excel', href: ROUTE_PATHS.adminImport },
     { label: 'Viết bài blog', href: ROUTE_PATHS.adminPosts },
+    { label: 'Xử lý báo giá', href: ROUTE_PATHS.adminQuotes },
     { label: 'Cài đặt email thông báo', href: ROUTE_PATHS.adminNotificationRecipients },
   ];
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="Tổng quan" description="Theo dõi nhanh sản phẩm, bài viết đề xuất và các lần import gần nhất." actions={quickActions.map((item) => <Link key={item.href} to={item.href} className={`rounded-2xl px-4 py-2 text-sm font-medium ${item.primary ? 'bg-primary text-primary-foreground' : 'border border-border hover:bg-secondary'}`}>{item.label}</Link>)} />
+      <PageHeader title="Tổng quan" description="Theo dõi nội dung, sản phẩm và tín hiệu khách cần tư vấn trong một nơi." actions={quickActions.map((item) => <Link key={item.href} to={item.href} className={`px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition ${item.primary ? 'bg-primary text-primary-foreground hover:-translate-y-0.5' : 'border border-border hover:border-primary hover:text-primary'}`}>{item.label}</Link>)} />
       <Notice>{error}</Notice>
       {!data ? <div className="h-48 animate-pulse rounded-3xl bg-secondary" /> : null}
       {data ? <>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           {cards.map((card) => (
-            <div key={card.label} className="rounded-3xl border border-border bg-card p-5">
+            <div key={card.label} className="bg-card p-5 transition-colors hover:bg-secondary/40">
               <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{card.label}</p>
               <p className="mt-3 text-3xl font-semibold">{card.value}</p>
             </div>

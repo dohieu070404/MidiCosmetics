@@ -11,6 +11,13 @@ const loggerOptions = {
     paths: [
       'req.headers.authorization',
       'req.headers.cookie',
+      'req.headers.referer',
+      'req.headers.referrer',
+      'req.url',
+      'url',
+      'req.body.password',
+      'req.body.bootstrapToken',
+      'req.body.recaptchaToken',
       'password',
       'passwordHash',
       '*.password',
@@ -23,6 +30,12 @@ const loggerOptions = {
       'JWT_REFRESH_SECRET',
       'SMTP_PASS',
       'SMTP_USER',
+      'DATABASE_URL',
+      'DIRECT_URL',
+      'POSTGRES_PASSWORD',
+      'RECAPTCHA_SECRET_KEY',
+      'CLOUDINARY_API_KEY',
+      'CLOUDINARY_API_SECRET',
       'smtpPass',
       'smtpUser',
       'env.email.smtpPass',
@@ -30,6 +43,18 @@ const loggerOptions = {
     ],
     censor: '[REDACTED]',
   },
+  ...(env.isProduction ? {
+    serializers: {
+      err(error) {
+        return {
+          type: error?.name || 'Error',
+          code: error?.code || undefined,
+          statusCode: error?.statusCode || undefined,
+          message: '[REDACTED_IN_PRODUCTION]',
+        };
+      },
+    },
+  } : {}),
 };
 
 // IMPORTANT:

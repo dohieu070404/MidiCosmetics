@@ -4,10 +4,12 @@ import { healthService } from './health.service.js';
 
 const buildBaseHealth = () => ({
   status: 'ok',
-  service: env.appName,
-  environment: env.nodeEnv,
-  uptimeSeconds: Math.round(process.uptime()),
   timestamp: new Date().toISOString(),
+  ...(env.isProduction ? {} : {
+    service: env.appName,
+    environment: env.nodeEnv,
+    uptimeSeconds: Math.round(process.uptime()),
+  }),
 });
 
 const safeDatabaseHealth = async () => {

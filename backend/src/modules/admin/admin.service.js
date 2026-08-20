@@ -11,7 +11,7 @@ import { buildSearchWhere, compactObject } from '../../utils/prisma-format.js';
 import { buildUniqueSlug, ensureSlug } from '../../utils/slug.js';
 import { normalizePlainText, sanitizeRichHtml } from '../../utils/sanitize.js';
 import { validateRemoteImageUrl } from '../../utils/safe-url.js';
-import { buildLocalUploadUrl, localUploadFilePath } from '../../utils/upload-paths.js';
+import { buildLocalUploadUrl, localUploadFilePath, privateUploadFilePath } from '../../utils/upload-paths.js';
 
 const categorySelect = {
   id: true,
@@ -57,6 +57,11 @@ const mediaSelect = {
   uploader: { select: { uuid: true, fullName: true, email: true } },
 };
 
+const mediaListSelect = {
+  ...mediaSelect,
+  _count: { select: { productImages: true, featuredPosts: true } },
+};
+
 const productInclude = {
   category: { select: { uuid: true, name: true, slug: true } },
   brand: { select: { uuid: true, name: true, slug: true } },
@@ -76,6 +81,7 @@ const postInclude = {
 
 
 const PRODUCT_IMPORT_TEMPLATE_FILENAME = 'mau-import-san-pham-kiot.xlsx';
+const PRODUCT_INVENTORY_EXPORT_FILENAME = 'midi-kho-hang-hien-co.xlsx';
 const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 const KIOT_IMPORT_TEMPLATE_COLUMNS = [
@@ -698,7 +704,8 @@ const parseKiotRowsFromRaw = async (rawRows) => {
 const parseProductImportFile = async (filePath) => {
   let workbook;
   try {
-    workbook = XLSX.readFile(filePath, { cellDates: false });
+    const fileBuffer = await fs.readFile(filePath);
+    workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: false });
   } catch (error) {
     throw ApiError.badRequest('File Excel không đọc được. Vui lòng kiểm tra đúng định dạng .xlsx chuẩn');
   }
@@ -812,6 +819,8 @@ const buildPreviewPayload = (job, parsed) => {
 const importFilePathFromJob = (job) => {
   if (!job?.fileUrl) return null;
   const filename = path.basename(job.fileUrl);
+  if (String(job.fileUrl).startsWith('private://imports/')) return privateUploadFilePath(filename);
+  // Compatibility for an unfinished import created before private storage was introduced.
   return localUploadFilePath(filename);
 };
 
@@ -924,6 +933,32 @@ const upsertProductFromImportRow = async (tx, row) => {
 const ensureImportDuplicateSafety = async () => true;
 
 export const adminService = {
+  async getInventoryExport() {
+    const products = await prisma.product.findMany({
+      where: { deletedAt: null },
+      orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
+      include: { category: { select: { name: true } }, brand: { select: { name: true } } },
+    });
+    const headers = ['Mã hàng', 'Mã vạch', 'Tên sản phẩm', 'Danh mục', 'Thương hiệu', 'Trạng thái', 'Tồn kho', 'Đơn vị', 'Giá bán', 'Giá so sánh', 'Giá trị tồn kho', 'Tiền tệ', 'Cập nhật lúc'];
+    const rows = products.map((product) => {
+      const price = Number(product.price?.toString?.() || 0);
+      const compareAtPrice = product.compareAtPrice === null ? null : Number(product.compareAtPrice?.toString?.() || 0);
+      return [product.sku || '', product.barcode || '', product.name, product.category?.name || '', product.brand?.name || '', product.status, product.stock, product.unit || '', price, compareAtPrice, product.stock * price, product.currency, product.updatedAt];
+    });
+    const workbook = XLSX.utils.book_new();
+    workbook.Props = { Title: 'Kho hàng hiện có - Midi Cosmetics', Author: 'Midi Cosmetics Admin', CreatedDate: new Date() };
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows], { cellDates: true });
+    worksheet['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 42 }, { wch: 24 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 20 }, { wch: 10 }, { wch: 21 }];
+    worksheet['!autofilter'] = { ref: `A1:M${Math.max(rows.length + 1, 1)}` };
+    worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
+    for (let row = 2; row <= rows.length + 1; row += 1) {
+      for (const column of ['I', 'J', 'K']) if (worksheet[`${column}${row}`]) worksheet[`${column}${row}`].z = '#,##0 [$₫-vi-VN]';
+      if (worksheet[`M${row}`]) worksheet[`M${row}`].z = 'dd/mm/yyyy hh:mm';
+    }
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Kho hàng');
+    return { filename: PRODUCT_INVENTORY_EXPORT_FILENAME, contentType: XLSX_CONTENT_TYPE, buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx', compression: true }) };
+  },
+
   async getProductImportTemplate() {
     const workbook = XLSX.utils.book_new();
     workbook.Props = {
@@ -1150,6 +1185,20 @@ export const adminService = {
       page,
       limit,
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      include: { _count: { select: { products: true } } },
+    });
+  },
+
+  async getCollection(uuid) {
+    return findByUuidOrThrow(prisma.productCollection, uuid, {
+      query: {
+        include: {
+          products: {
+            orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+            include: { product: { include: productInclude } },
+          },
+        },
+      },
     });
   },
 
@@ -1164,6 +1213,22 @@ export const adminService = {
     return prisma.productCollection.update({ where: { id: current.id }, data: compactObject({ ...body, slug }) });
   },
 
+  async setCollectionProducts(uuid, items) {
+    const collection = await findByUuidOrThrow(prisma.productCollection, uuid);
+    const uuids = items.map((item) => item.productUuid);
+    if (new Set(uuids).size !== uuids.length) throw ApiError.unprocessable('Một sản phẩm chỉ được xuất hiện một lần trong collection.');
+    const products = uuids.length ? await prisma.product.findMany({ where: { uuid: { in: uuids }, deletedAt: null }, select: { id: true, uuid: true } }) : [];
+    if (products.length !== uuids.length) throw ApiError.unprocessable('Một hoặc nhiều sản phẩm không còn tồn tại.');
+    const idByUuid = new Map(products.map((product) => [product.uuid, product.id]));
+    await prisma.$transaction(async (tx) => {
+      await tx.productCollectionItem.deleteMany({ where: { collectionId: collection.id } });
+      if (items.length) await tx.productCollectionItem.createMany({
+        data: items.map((item) => ({ collectionId: collection.id, productId: idByUuid.get(item.productUuid), sortOrder: item.sortOrder })),
+      });
+    });
+    return this.getCollection(uuid);
+  },
+
   async deleteCollection(uuid) {
     const current = await findByUuidOrThrow(prisma.productCollection, uuid);
     await prisma.productCollection.update({ where: { id: current.id }, data: { deletedAt: new Date() } });
@@ -1171,12 +1236,12 @@ export const adminService = {
   },
 
   async listProducts(query) {
-    const { page, limit, search, status, includeDeleted, categoryUuid, brandUuid } = query;
+    const { page, limit, search, status, includeDeleted, categoryUuid, brandUuid, deleted = 'active' } = query;
     const categoryId = categoryUuid ? await getIdByUuid(prisma.productCategory, categoryUuid, 'category') : undefined;
     const brandId = brandUuid ? await getIdByUuid(prisma.productBrand, brandUuid, 'brand') : undefined;
     return listWithPagination({
       model: prisma.product,
-      where: { ...(includeDeleted ? {} : { deletedAt: null }), ...(status ? { status } : {}), ...(categoryId ? { categoryId } : {}), ...(brandId ? { brandId } : {}), ...buildSearchWhere(['name', 'slug', 'sku', 'shortDescription'], search) },
+      where: { ...((includeDeleted || deleted === 'all') ? {} : deleted === 'trashed' ? { deletedAt: { not: null } } : { deletedAt: null }), ...(status ? { status } : {}), ...(categoryId ? { categoryId } : {}), ...(brandId ? { brandId } : {}), ...buildSearchWhere(['name', 'slug', 'sku', 'shortDescription'], search) },
       page,
       limit,
       include: productInclude,
@@ -1215,6 +1280,24 @@ export const adminService = {
     return true;
   },
 
+  async archiveProductsBulk(uuids) {
+    const result = await prisma.product.updateMany({ where: { uuid: { in: uuids }, deletedAt: null }, data: { deletedAt: new Date(), status: 'ARCHIVED', isFeatured: false } });
+    return { archivedCount: result.count };
+  },
+
+  async restoreProductsBulk(uuids) {
+    const result = await prisma.product.updateMany({ where: { uuid: { in: uuids }, deletedAt: { not: null } }, data: { deletedAt: null, status: 'INACTIVE', isFeatured: false } });
+    return { restoredCount: result.count };
+  },
+
+  async permanentlyDeleteProductsBulk(uuids) {
+    const products = await prisma.product.findMany({ where: { uuid: { in: uuids } }, select: { id: true, uuid: true, deletedAt: true } });
+    if (products.length !== uuids.length) throw ApiError.notFound('Một hoặc nhiều sản phẩm không tồn tại.');
+    if (products.some((product) => !product.deletedAt)) throw ApiError.unprocessable('Chỉ có thể xóa vĩnh viễn sản phẩm đã nằm trong thùng rác.');
+    const result = await prisma.product.deleteMany({ where: { id: { in: products.map((product) => product.id) }, deletedAt: { not: null } } });
+    return { deletedCount: result.count, quoteSnapshotsPreserved: true };
+  },
+
   async setProductStatus(uuid, status) {
     const current = await findByUuidOrThrow(prisma.product, uuid, { includeDeleted: true });
     await prisma.product.update({
@@ -1234,13 +1317,21 @@ export const adminService = {
   },
 
   async listMedia(query) {
-    const { page, limit, search, includeDeleted } = query;
+    const { page, limit, search, includeDeleted, provider, mimeType, uploaderUuid, from, to } = query;
+    const createdAt = from || to ? { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } : undefined;
     return listWithPagination({
       model: prisma.mediaAsset,
-      where: { ...(includeDeleted ? {} : { deletedAt: null }), ...buildSearchWhere(['originalName', 'fileName', 'altText'], search) },
+      where: {
+        ...(includeDeleted ? {} : { deletedAt: null }),
+        ...(provider ? { provider } : {}),
+        ...(mimeType ? { mimeType: { startsWith: mimeType, mode: 'insensitive' } } : {}),
+        ...(uploaderUuid ? { uploader: { is: { uuid: uploaderUuid } } } : {}),
+        ...(createdAt ? { createdAt } : {}),
+        ...buildSearchWhere(['originalName', 'fileName', 'altText'], search),
+      },
       page,
       limit,
-      select: mediaSelect,
+      select: mediaListSelect,
     });
   },
 
@@ -1290,8 +1381,22 @@ export const adminService = {
     });
   },
 
+  async updateMedia(uuid, body) {
+    const current = await findByUuidOrThrow(prisma.mediaAsset, uuid);
+    return prisma.mediaAsset.update({
+      where: { id: current.id },
+      data: { altText: body.altText || null },
+      select: mediaSelect,
+    });
+  },
+
   async deleteMedia(uuid) {
     const current = await findByUuidOrThrow(prisma.mediaAsset, uuid, { includeDeleted: true });
+    const usageCount = await prisma.productImage.count({ where: { mediaAssetId: current.id } })
+      + await prisma.blogPost.count({ where: { featuredImageId: current.id, deletedAt: null } });
+    if (usageCount > 0) {
+      throw ApiError.conflict(`Ảnh đang được sử dụng tại ${usageCount} vị trí. Hãy gỡ ảnh khỏi nội dung trước khi xóa.`);
+    }
     if (current.provider === 'CLOUDINARY' && current.publicId && shouldUploadToCloudinary()) {
       await cloudinary.uploader.destroy(current.publicId).catch(() => null);
     }
@@ -1322,7 +1427,7 @@ export const adminService = {
         createdById: actor?.id || null,
         type: 'PRODUCTS',
         originalName: file.originalname,
-        fileUrl: `/uploads/${file.filename}`,
+        fileUrl: `private://imports/${file.filename}`,
         status: 'PENDING',
       },
     });
@@ -1356,6 +1461,7 @@ export const adminService = {
           completedAt: new Date(),
         },
       }).catch(() => null);
+      await fs.unlink(file.path).catch(() => null);
       throw error;
     }
   },
@@ -1429,11 +1535,13 @@ export const adminService = {
           successRows,
           failedRows,
           errorReport: rowReports.filter((row) => row.status === 'FAILED' || row.warnings?.length),
+          fileUrl: null,
           completedAt: new Date(),
         },
         include: { createdBy: { select: { uuid: true, fullName: true, email: true } } },
       });
 
+      await fs.unlink(filePath).catch(() => null);
       return { ...updatedJob, summary: { createdCount: createdProducts, updatedCount: updatedProducts, skippedCount: skippedRows, failedCount: failedRows - skippedRows, createdProducts, updatedProducts } };
     } catch (error) {
       return prisma.importJob.update({

@@ -1,28 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { SectionHeading } from '@/components/brand/section-heading';
-import { Container } from '@/components/common/container';
-import { ImageWithFallback } from '@/components/common/image-with-fallback';
-import { PageShell } from '@/components/common/page-shell';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ROUTE_PATHS } from '@/app/router/route-paths';
-import { publicApi } from '@/lib/api/public-api';
+import { ArrowRight, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
-function BlogCard({ post }) {
-  return (
-    <Card className="h-full overflow-hidden bg-card/80 transition-transform duration-300 hover:-translate-y-1">
-      <CardContent className="flex h-full flex-col p-0">
-        {post.featuredImage?.secureUrl ? <Link to={ROUTE_PATHS.blogDetail(post.slug)}><ImageWithFallback src={post.featuredImage.secureUrl} alt={post.title} className="aspect-[16/10] w-full object-cover" loading="lazy" /></Link> : null}
-        <div className="flex flex-1 flex-col p-5 sm:p-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-primary/80">{post.category?.name || 'Blog làm đẹp'}</p>
-          <h2 className="mt-4 line-clamp-2 font-display text-xl font-semibold leading-tight tracking-tight sm:text-2xl"><Link to={ROUTE_PATHS.blogDetail(post.slug)}>{post.title}</Link></h2>
-          <p className="mt-5 line-clamp-3 text-sm leading-7 text-muted-foreground">{post.excerpt}</p>
-          <p className="mt-auto pt-5 text-xs text-muted-foreground">{post.readingMinutes} phút đọc · {post.viewCount} lượt xem</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
+import { ROUTE_PATHS } from "@/app/router/route-paths";
+import { Container } from "@/components/common/container";
+import { ImageWithFallback } from "@/components/common/image-with-fallback";
+import { StatePanel } from "@/components/common/state-panel";
+import { Button } from "@/components/ui/button";
+import { publicApi } from "@/lib/api/public-api";
+
+function BlogCard({ post, featured = false }) {
+  return <article className={`group overflow-hidden rounded-2xl transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_55px_rgba(48,33,24,0.1)] ${featured ? "grid border border-border/70 bg-secondary/45 lg:grid-cols-[1.2fr_.8fr]" : "bg-card"}`}><Link to={ROUTE_PATHS.blogDetail(post.slug)} className="block overflow-hidden bg-secondary"><ImageWithFallback src={post.featuredImage?.secureUrl || post.image} alt={post.title} className={`${featured ? "h-full min-h-80" : "aspect-[16/10]"} w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]`} /></Link><div className={featured ? "flex flex-col justify-center p-7 sm:p-10" : "p-5"}><p className="midi-eyebrow text-muted-foreground">{post.category?.name || "Tạp chí Midi"} · {post.readingMinutes || 1} phút đọc</p><h2 className={`mt-3 font-display font-normal leading-[1.02] tracking-[-0.035em] ${featured ? "text-4xl sm:text-5xl" : "text-2xl"}`}><Link to={ROUTE_PATHS.blogDetail(post.slug)}>{post.title}</Link></h2><p className="mt-4 line-clamp-3 text-base leading-7 text-muted-foreground">{post.excerpt}</p><Link to={ROUTE_PATHS.blogDetail(post.slug)} className="midi-link-arrow mt-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em]">Đọc bài viết <ArrowRight className="size-4" /></Link></div></article>;
 }
 
 export function BlogIndexPage() {
@@ -31,77 +19,19 @@ export function BlogIndexPage() {
   const [tax, setTax] = useState({ blogCategories: [], blogTags: [] });
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const search = params.get('search') || '';
-  const category = params.get('category') || '';
-  const tags = params.get('tags') || '';
-  const sort = params.get('sort') || 'latest';
-  const page = Number(params.get('page') || 1);
-
-  const query = useMemo(() => ({ search, category, tags, sort, page, limit: 9 }), [search, category, tags, sort, page]);
-
-  useEffect(() => { publicApi.taxonomies().then((res) => setTax(res.data)).catch(() => null); }, []);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(true); setError('');
-      publicApi.listBlogs(query).then((res) => { setBlogs(res.data.blogs || []); setMeta(res.meta || {}); }).catch((err) => setError(err.message)).finally(() => setLoading(false));
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const updateParam = useCallback((key, value, options = {}) => {
-    setParams((currentParams) => {
-      const next = new URLSearchParams(currentParams);
-      if (value) next.set(key, value); else next.delete(key);
-      if (key !== 'page') next.set('page', '1');
-      return next;
-    }, options);
-  }, [setParams]);
-
+  const [error, setError] = useState("");
+  const search = params.get("search") || "";
+  const category = params.get("category") || "";
+  const tags = params.get("tags") || "";
+  const sort = params.get("sort") || "latest";
+  const page = Number(params.get("page") || 1);
+  const query = useMemo(() => ({ search, category, tags, sort, page, limit: 9 }), [category, page, search, sort, tags]);
   const [searchInput, setSearchInput] = useState(search);
-  const isComposingSearchRef = useRef(false);
+  const composing = useRef(false);
+  const setParam = useCallback((key, value) => setParams((current) => { const next = new URLSearchParams(current); if (value) next.set(key, value); else next.delete(key); if (key !== "page") next.set("page", "1"); return next; }), [setParams]);
+  useEffect(() => { publicApi.taxonomies().then((response) => setTax(response.data)).catch(() => null); }, []);
+  useEffect(() => { const timer = setTimeout(() => { setLoading(true); setError(""); publicApi.listBlogs(query).then((response) => { setBlogs(response.data.blogs || []); setMeta(response.meta || {}); }).catch((err) => setError(err.message)).finally(() => setLoading(false)); }, 250); return () => clearTimeout(timer); }, [query]);
 
-  useEffect(() => {
-    if (!isComposingSearchRef.current) setSearchInput(search);
-  }, [search]);
-
-  const commitSearch = useCallback((value) => {
-    updateParam('search', value.trim(), { replace: true });
-  }, [updateParam]);
-
-  const handleSearchChange = (event) => {
-    const value = event.target.value;
-    setSearchInput(value);
-    if (!isComposingSearchRef.current) commitSearch(value);
-  };
-
-  const handleSearchCompositionStart = () => {
-    isComposingSearchRef.current = true;
-  };
-
-  const handleSearchCompositionEnd = (event) => {
-    isComposingSearchRef.current = false;
-    const value = event.currentTarget.value;
-    setSearchInput(value);
-    commitSearch(value);
-  };
-
-  return (
-    <PageShell className="py-10 sm:py-14 lg:py-20">
-      <Container>
-        <SectionHeading eyebrow="Blog Midi Cosmetics" title="Cảm hứng làm đẹp thanh lịch cho mỗi ngày." description="Tìm bài viết theo chủ đề, tag hoặc từ khóa bạn quan tâm." />
-        <div className="mt-8 grid gap-3 rounded-[1.75rem] border border-border bg-card/70 p-4 sm:mt-10 md:grid-cols-4">
-          <input value={searchInput} onChange={handleSearchChange} onCompositionStart={handleSearchCompositionStart} onCompositionEnd={handleSearchCompositionEnd} placeholder="Tìm bài viết..." className="min-h-11 rounded-full border border-input bg-background px-4 py-2 text-sm md:col-span-2" />
-          <select value={category} onChange={(e) => updateParam('category', e.target.value)} className="min-h-11 rounded-full border border-input bg-background px-4 py-2 text-sm"><option value="">Tất cả danh mục</option>{tax.blogCategories.map((item) => <option key={item.uuid} value={item.slug}>{item.name}</option>)}</select>
-          <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} className="min-h-11 rounded-full border border-input bg-background px-4 py-2 text-sm"><option value="latest">Mới nhất</option><option value="popular">Nhiều lượt xem</option></select>
-          <div className="flex gap-2 overflow-x-auto pb-1 md:col-span-4 md:flex-wrap md:overflow-visible">{tax.blogTags.map((tag) => <Button key={tag.uuid} size="sm" variant={tags === tag.slug ? 'default' : 'outline'} onClick={() => updateParam('tags', tags === tag.slug ? '' : tag.slug)}>{tag.name}</Button>)}</div>
-        </div>
-        {error ? <div className="mt-6 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
-        <div className="mt-6 text-sm text-muted-foreground">{loading ? 'Đang tải...' : `Có ${meta.total || blogs.length} bài viết`}</div>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{loading ? [1, 2, 3, 4, 5, 6].map((n) => <div key={n} className="h-80 animate-pulse rounded-[1.75rem] bg-secondary/60" />) : blogs.map((post) => <BlogCard key={post.uuid} post={post} />)}</div>
-        {!loading && !blogs.length ? <div className="mt-8 rounded-[2rem] border border-dashed p-8 text-center text-muted-foreground sm:p-10">Chưa có bài viết phù hợp.</div> : null}
-        <div className="mt-10 grid gap-3 sm:flex sm:items-center sm:justify-center"><Button variant="outline" disabled={!meta.hasPreviousPage} onClick={() => updateParam('page', String(Math.max(1, page - 1)))}>Trang trước</Button><span className="text-center text-sm text-muted-foreground">Trang {meta.page || page}/{meta.totalPages || 1}</span><Button variant="outline" disabled={!meta.hasNextPage} onClick={() => updateParam('page', String(page + 1))}>Trang sau</Button></div>
-      </Container>
-    </PageShell>
-  );
+  const featured = blogs[0];
+  return <div className="pb-24"><header className="bg-secondary/45 py-16 text-center sm:py-24"><Container><p className="midi-eyebrow">Tạp chí Midi</p><h1 className="mx-auto mt-5 max-w-4xl font-display text-5xl font-normal leading-[.96] tracking-[-0.06em] sm:text-7xl">Cảm hứng làm đẹp, đọc chậm và chọn kỹ.</h1></Container></header><Container><div className="mt-8 grid gap-3 rounded-2xl border border-border bg-card/70 p-4 shadow-sm lg:grid-cols-[1fr_13rem_13rem]"><label className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={searchInput} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={(event) => { composing.current = false; setParam("search", event.currentTarget.value.trim()); }} onChange={(event) => { setSearchInput(event.target.value); if (!composing.current) setParam("search", event.target.value.trim()); }} className="h-12 w-full rounded-lg border border-input bg-card pl-10 pr-4 text-base outline-none transition-colors focus:border-primary" placeholder="Tìm bài viết..." /></label><select value={category} onChange={(event) => setParam("category", event.target.value)} className="h-12 rounded-lg border border-input bg-card px-3 text-sm"><option value="">Mọi chủ đề</option>{tax.blogCategories?.map((item) => <option key={item.uuid} value={item.slug}>{item.name}</option>)}</select><select value={sort} onChange={(event) => setParam("sort", event.target.value)} className="h-12 rounded-lg border border-input bg-card px-3 text-sm"><option value="latest">Mới nhất</option><option value="popular">Nhiều lượt xem</option></select><div className="flex gap-2 overflow-x-auto lg:col-span-3">{tax.blogTags?.map((tag) => <button type="button" key={tag.uuid} onClick={() => setParam("tags", tags === tag.slug ? "" : tag.slug)} className={`whitespace-nowrap rounded-full border px-3 py-2 text-xs uppercase tracking-[0.1em] transition-all ${tags === tag.slug ? "border-primary bg-primary text-white" : "border-border hover:border-primary/50 hover:bg-secondary"}`}>{tag.name}</button>)}</div></div>{error ? <StatePanel type="error" title="Chưa tải được bài viết" description={error} className="mt-8" /> : null}{loading ? <div className="mt-8 h-96 animate-pulse rounded-2xl bg-secondary" /> : null}{!loading && !error && featured ? <><div className="mt-10"><BlogCard post={featured} featured /></div><div className="mt-12 grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">{blogs.slice(1).map((post) => <BlogCard key={post.uuid} post={post} />)}</div></> : null}{!loading && !error && !blogs.length ? <StatePanel title="Chưa có bài viết phù hợp" description="Hãy thử chủ đề hoặc từ khóa khác." className="mt-8" /> : null}{meta.totalPages > 1 ? <div className="mt-14 flex items-center justify-center gap-3"><Button variant="outline" disabled={!meta.hasPreviousPage} onClick={() => setParam("page", String(page - 1))}>Trang trước</Button><span className="text-sm text-muted-foreground">{meta.page}/{meta.totalPages}</span><Button variant="outline" disabled={!meta.hasNextPage} onClick={() => setParam("page", String(page + 1))}>Trang sau</Button></div> : null}</Container></div>;
 }

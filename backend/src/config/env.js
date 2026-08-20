@@ -9,6 +9,14 @@ const parseBoolean = (value) => {
   return ['true', '1', 'yes', 'y'].includes(value.toLowerCase());
 };
 
+const parseTrustProxy = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (!normalized || ['false', '0', 'no', 'n'].includes(normalized)) return false;
+  if (['true', 'yes', 'y'].includes(normalized)) return true;
+  if (/^[1-9]\d*$/.test(normalized)) return Number(normalized);
+  return false;
+};
+
 const csvToArray = (value) => {
   if (!value) return [];
   return value
@@ -42,13 +50,7 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   LOGGER_PRETTY: z.string().default('false'),
-  TRUST_PROXY: z.string().default('false'),
-
-  // Development-only admin seed. Production must use /api/v1/admin/bootstrap instead.
-  ALLOW_ADMIN_SEED: z.string().default('false'),
-  DEV_ADMIN_EMAIL: z.preprocess(emptyStringToUndefined, z.string().email().optional()),
-  DEV_ADMIN_PASSWORD: z.preprocess(emptyStringToUndefined, z.string().min(8).optional()),
-  DEV_ADMIN_FULL_NAME: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
+  TRUST_PROXY: z.string().regex(/^(?:false|true|0|[1-9]\d*)$/i).default('false'),
 
   // One-time production bootstrap for the first admin account.
   ADMIN_ALLOWED_EMAILS: z.string().default(''),
@@ -64,13 +66,29 @@ const envSchema = z.object({
   MAIL_FROM: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
   ADMIN_ALERT_EMAIL: z.preprocess(emptyStringToUndefined, z.string().email().optional()),
   FRONTEND_URL: z.preprocess(emptyStringToUndefined, z.string().url().optional()),
+  MESSENGER_URL: z.preprocess(emptyStringToUndefined, z.string().url().optional()),
+  QUOTE_EXPIRY_DAYS: z.coerce.number().int().min(1).max(30).default(7),
+  QUOTE_CAPTCHA_ENABLED: z.string().default('true'),
+  RECAPTCHA_SECRET_KEY: z.preprocess(emptyStringToUndefined, z.string().min(20).optional()),
+  RECAPTCHA_ALLOWED_HOSTNAMES: z.string().default(''),
 
   CLOUDINARY_CLOUD_NAME: z.string().optional().default(''),
   CLOUDINARY_API_KEY: z.string().optional().default(''),
   CLOUDINARY_API_SECRET: z.string().optional().default(''),
   UPLOAD_DRIVER: z.enum(['local', 'cloudinary']).default('local'),
   UPLOAD_DIR: z.string().min(1).default('uploads'),
-  PUBLIC_UPLOAD_BASE_URL: z.string().optional().default(''),
+  PRIVATE_UPLOAD_DIR: z.string().min(1).default('.private/imports'),
+  PUBLIC_UPLOAD_BASE_URL: z.preprocess(
+    emptyStringToUndefined,
+    z.string().url().refine((value) => {
+      try {
+        const parsedUrl = new URL(value);
+        return ['http:', 'https:'].includes(parsedUrl.protocol) && !parsedUrl.username && !parsedUrl.password;
+      } catch {
+        return false;
+      }
+    }, 'PUBLIC_UPLOAD_BASE_URL must be an http(s) URL without embedded credentials').optional()
+  ),
   UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
   UPLOAD_IMAGE_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
   UPLOAD_SPREADSHEET_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(10),
@@ -96,22 +114,44 @@ const assertProductionSafety = () => {
 
   const rejectUnsafeSecret = (name, value) => {
     const normalized = String(value || '').toLowerCase();
-    const unsafeMarkers = ['change_me', 'replace_', 'default', 'secret_at_least_32_chars'];
-    if (unsafeMarkers.some((marker) => normalized.includes(marker))) {
-      throw new Error(`${name} must be set to a strong non-default value when NODE_ENV=production`);
+    const unsafeMarkers = ['change_me', 'replace_', 'default', 'placeholder', 'secret_at_least_32_chars'];
+    if (String(value || '').length < 48 || unsafeMarkers.some((marker) => normalized.includes(marker))) {
+      throw new Error(`${name} must be a random value of at least 48 characters when NODE_ENV=production`);
     }
   };
 
   rejectUnsafeSecret('JWT_ACCESS_SECRET', envVars.JWT_ACCESS_SECRET);
   rejectUnsafeSecret('JWT_REFRESH_SECRET', envVars.JWT_REFRESH_SECRET);
+  if (envVars.JWT_ACCESS_SECRET === envVars.JWT_REFRESH_SECRET) {
+    throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different values');
+  }
 
   const allowedOrigins = csvToArray(envVars.CORS_ORIGIN);
   if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
     throw new Error('CORS_ORIGIN must be an explicit comma-separated whitelist when NODE_ENV=production');
   }
+  for (const origin of allowedOrigins) {
+    let parsedOrigin;
+    try {
+      parsedOrigin = new URL(origin);
+    } catch {
+      throw new Error('Every CORS_ORIGIN value must be a valid HTTPS origin');
+    }
+    if (parsedOrigin.protocol !== 'https:' || parsedOrigin.origin !== origin || parsedOrigin.username || parsedOrigin.password) {
+      throw new Error('Every CORS_ORIGIN value must be an exact HTTPS origin without credentials or paths');
+    }
+  }
 
-  if (parseBoolean(envVars.ALLOW_ADMIN_SEED)) {
-    throw new Error('ALLOW_ADMIN_SEED must be false when NODE_ENV=production');
+  if (!envVars.FRONTEND_URL) {
+    throw new Error('FRONTEND_URL is required when NODE_ENV=production');
+  }
+  const frontendUrl = new URL(envVars.FRONTEND_URL);
+  if (frontendUrl.protocol !== 'https:' || frontendUrl.username || frontendUrl.password) {
+    throw new Error('FRONTEND_URL must be an HTTPS URL without embedded credentials in production');
+  }
+
+  if (String(envVars.TRUST_PROXY).toLowerCase() === 'true') {
+    throw new Error('TRUST_PROXY=true is too broad in production; use a trusted proxy hop count such as 1');
   }
 
   if (parseBoolean(envVars.SEED_DATABASE)) {
@@ -134,7 +174,21 @@ const assertProductionSafety = () => {
     throw new Error('UPLOAD_DRIVER must be cloudinary when NODE_ENV=production');
   }
 
-  if (envVars.ADMIN_BOOTSTRAP_ENABLED && parseBoolean(envVars.ADMIN_BOOTSTRAP_ENABLED)) {
+  if (envVars.PUBLIC_UPLOAD_BASE_URL && new URL(envVars.PUBLIC_UPLOAD_BASE_URL).protocol !== 'https:') {
+    throw new Error('PUBLIC_UPLOAD_BASE_URL must use HTTPS in production');
+  }
+
+  if (!parseBoolean(envVars.QUOTE_CAPTCHA_ENABLED)) {
+    throw new Error('QUOTE_CAPTCHA_ENABLED must be true when NODE_ENV=production');
+  }
+  if (!envVars.RECAPTCHA_SECRET_KEY) {
+    throw new Error('RECAPTCHA_SECRET_KEY is required when NODE_ENV=production');
+  }
+  if (csvToArray(envVars.RECAPTCHA_ALLOWED_HOSTNAMES).length === 0) {
+    throw new Error('RECAPTCHA_ALLOWED_HOSTNAMES must contain the production frontend hostname');
+  }
+
+  if (parseBoolean(envVars.ADMIN_BOOTSTRAP_ENABLED)) {
     if (!envVars.ADMIN_BOOTSTRAP_TOKEN || String(envVars.ADMIN_BOOTSTRAP_TOKEN).length < 32) {
       throw new Error('ADMIN_BOOTSTRAP_TOKEN must be at least 32 characters when ADMIN_BOOTSTRAP_ENABLED=true');
     }
@@ -185,25 +239,26 @@ export const env = Object.freeze({
     level: envVars.LOG_LEVEL,
     pretty: parseBoolean(envVars.LOGGER_PRETTY),
   },
-  trustProxy: parseBoolean(envVars.TRUST_PROXY),
+  trustProxy: parseTrustProxy(envVars.TRUST_PROXY),
   cloudinary: {
     cloudName: envVars.CLOUDINARY_CLOUD_NAME,
     apiKey: envVars.CLOUDINARY_API_KEY,
     apiSecret: envVars.CLOUDINARY_API_SECRET,
   },
   adminLoginPath: envVars.ADMIN_LOGIN_PATH,
-  adminSeed: {
-    allowAdminSeed: parseBoolean(envVars.ALLOW_ADMIN_SEED),
-    devAdminEmail: envVars.DEV_ADMIN_EMAIL || 'admin@midicosmetics.local',
-    devAdminPassword: envVars.DEV_ADMIN_PASSWORD || 'Admin@123456',
-    devAdminFullName: envVars.DEV_ADMIN_FULL_NAME || 'Midi Admin',
-  },
   adminBootstrap: {
     enabled: parseBoolean(envVars.ADMIN_BOOTSTRAP_ENABLED),
     token: envVars.ADMIN_BOOTSTRAP_TOKEN || '',
     allowedEmails: csvToArray(envVars.ADMIN_ALLOWED_EMAILS).map((email) => email.toLowerCase()),
   },
   frontendUrl: envVars.FRONTEND_URL || '',
+  messengerUrl: envVars.MESSENGER_URL || 'https://m.me/61580016268412',
+  quoteExpiryDays: envVars.QUOTE_EXPIRY_DAYS,
+  quoteCaptchaEnabled: parseBoolean(envVars.QUOTE_CAPTCHA_ENABLED),
+  recaptcha: {
+    secretKey: envVars.RECAPTCHA_SECRET_KEY || '',
+    allowedHostnames: csvToArray(envVars.RECAPTCHA_ALLOWED_HOSTNAMES).map((hostname) => hostname.toLowerCase()),
+  },
   email: {
     smtpHost: envVars.SMTP_HOST || '',
     smtpPort: envVars.SMTP_PORT,
@@ -218,7 +273,8 @@ export const env = Object.freeze({
   upload: {
     driver: envVars.UPLOAD_DRIVER,
     dir: envVars.UPLOAD_DIR,
-    publicBaseUrl: envVars.PUBLIC_UPLOAD_BASE_URL,
+    privateDir: envVars.PRIVATE_UPLOAD_DIR,
+    publicBaseUrl: envVars.PUBLIC_UPLOAD_BASE_URL || '',
     maxFileSizeMb: envVars.UPLOAD_MAX_FILE_SIZE_MB,
     imageMaxFileSizeMb: envVars.UPLOAD_IMAGE_MAX_FILE_SIZE_MB,
     spreadsheetMaxFileSizeMb: envVars.UPLOAD_SPREADSHEET_MAX_FILE_SIZE_MB,

@@ -13,6 +13,9 @@ const envSchema = z.object({
   IS_PROD: z.boolean(),
   IS_DEV: z.boolean(),
   ADMIN_LOGIN_PATH: z.string().min(1),
+  MESSENGER_URL: z.string().url(),
+  QUOTE_CAPTCHA_ENABLED: booleanStringSchema,
+  RECAPTCHA_SITE_KEY: z.string(),
 });
 
 const rawEnv = {
@@ -24,6 +27,9 @@ const rawEnv = {
   IS_PROD: import.meta.env.PROD,
   IS_DEV: import.meta.env.DEV,
   ADMIN_LOGIN_PATH: import.meta.env.VITE_ADMIN_LOGIN_PATH ?? "/quan-tri-midi-secure-2026",
+  MESSENGER_URL: import.meta.env.VITE_MESSENGER_URL ?? "https://m.me/61580016268412",
+  QUOTE_CAPTCHA_ENABLED: import.meta.env.VITE_QUOTE_CAPTCHA_ENABLED ?? "true",
+  RECAPTCHA_SITE_KEY: import.meta.env.VITE_RECAPTCHA_SITE_KEY ?? "",
 };
 
 const parsedEnv = envSchema.safeParse(rawEnv);

@@ -1,39 +1,8 @@
-import bcrypt from 'bcryptjs';
 import prismaPackage from '@prisma/client';
 
 const { PrismaClient } = prismaPackage;
 
 const prisma = new PrismaClient();
-
-const isProduction = process.env.NODE_ENV === 'production';
-const defaultDevAdminEmail = 'admin@midicosmetics.local';
-const defaultDevAdminPassword = 'Admin@123456';
-const parseBoolean = (value) => ['true', '1', 'yes', 'y'].includes(String(value || '').toLowerCase());
-const allowAdminSeed = parseBoolean(process.env.ALLOW_ADMIN_SEED);
-const devAdminEmail = (process.env.DEV_ADMIN_EMAIL || defaultDevAdminEmail).toLowerCase();
-const devAdminPassword = process.env.DEV_ADMIN_PASSWORD || defaultDevAdminPassword;
-const devAdminFullName = process.env.DEV_ADMIN_FULL_NAME || 'Midi Admin';
-const bcryptSaltRounds = Number(process.env.BCRYPT_SALT_ROUNDS || 12);
-const hash = (password) => bcrypt.hash(password, bcryptSaltRounds);
-
-const seedUsers = async () => {
-  if (isProduction) {
-    console.log('Production admin seed skipped. Create the first admin with POST /api/v1/admin/bootstrap.');
-    return;
-  }
-
-  if (!allowAdminSeed) {
-    console.log('Development admin seed skipped because ALLOW_ADMIN_SEED is not true.');
-    return;
-  }
-
-  const passwordHash = await hash(devAdminPassword);
-  await prisma.user.upsert({
-    where: { email: devAdminEmail },
-    update: { passwordHash, fullName: devAdminFullName, role: 'ADMIN', status: 'ACTIVE', emailVerifiedAt: new Date(), passwordChangedAt: new Date(), deletedAt: null },
-    create: { email: devAdminEmail, passwordHash, fullName: devAdminFullName, role: 'ADMIN', status: 'ACTIVE', emailVerifiedAt: new Date(), passwordChangedAt: new Date() },
-  });
-};
 
 const seedBlogTaxonomy = async () => {
   const blogCategories = [
@@ -50,10 +19,44 @@ const seedBlogTaxonomy = async () => {
 
 const seedProductTaxonomy = async () => {
   const productCategories = [
-    { name: 'Skincare', slug: 'skincare', description: 'Sản phẩm chăm sóc da.', sortOrder: 10 },
-    { name: 'Hair', slug: 'hair', description: 'Sản phẩm chăm sóc tóc.', sortOrder: 20 },
-    { name: 'Body', slug: 'body', description: 'Sản phẩm chăm sóc cơ thể.', sortOrder: 30 },
-    { name: 'Perfume', slug: 'perfume', description: 'Nước hoa và xịt thơm.', sortOrder: 40 },
+    { name: 'Tẩy trang', slug: 'tay-trang', description: 'Làm sạch lớp trang điểm, kem chống nắng và bụi bẩn.', sortOrder: 10 },
+    { name: 'Sữa rửa mặt', slug: 'sua-rua-mat', description: 'Làm sạch da mặt hằng ngày.', sortOrder: 20 },
+    { name: 'Toner', slug: 'toner', description: 'Cân bằng và chuẩn bị da cho các bước dưỡng.', sortOrder: 30 },
+    { name: 'Serum', slug: 'serum', description: 'Tinh chất chăm sóc theo nhu cầu da.', sortOrder: 40 },
+    { name: 'Kem dưỡng', slug: 'kem-duong', description: 'Dưỡng ẩm và hỗ trợ hàng rào bảo vệ da.', sortOrder: 50 },
+    { name: 'Mặt nạ', slug: 'mat-na', description: 'Bổ sung bước chăm sóc chuyên sâu.', sortOrder: 60 },
+    { name: 'Xịt khoáng', slug: 'xit-khoang', description: 'Làm dịu và cấp ẩm nhanh.', sortOrder: 70 },
+    { name: 'Tẩy da chết', slug: 'tay-da-chet', description: 'Làm mới bề mặt da.', sortOrder: 80 },
+    { name: 'Dán mụn', slug: 'dan-mun', description: 'Miếng dán hỗ trợ chăm sóc nốt mụn.', sortOrder: 90 },
+    { name: 'Kem chống nắng', slug: 'kem-chong-nang', description: 'Bảo vệ da trước tia UV.', sortOrder: 100 },
+    { name: 'Son', slug: 'son', description: 'Son màu và son dưỡng môi.', sortOrder: 110 },
+    { name: 'Cushion', slug: 'cushion', description: 'Phấn nước và cushion nền.', sortOrder: 120 },
+    { name: 'Kem nền', slug: 'kem-nen', description: 'Sản phẩm nền dạng kem hoặc lỏng.', sortOrder: 130 },
+    { name: 'Kem lót', slug: 'kem-lot', description: 'Chuẩn bị bề mặt da trước lớp nền.', sortOrder: 140 },
+    { name: 'Che khuyết điểm', slug: 'che-khuyet-diem', description: 'Che phủ vùng cần hiệu chỉnh.', sortOrder: 150 },
+    { name: 'Phấn phủ', slug: 'phan-phu', description: 'Cố định và hoàn thiện lớp nền.', sortOrder: 160 },
+    { name: 'Xịt khóa nền', slug: 'xit-khoa-nen', description: 'Hỗ trợ lớp trang điểm bền hơn.', sortOrder: 170 },
+    { name: 'Phấn mắt, má', slug: 'phan-mat-ma', description: 'Màu mắt và má hồng.', sortOrder: 180 },
+    { name: 'Khối & highlight', slug: 'khoi-highlihght', description: 'Tạo khối và bắt sáng.', sortOrder: 190 },
+    { name: 'Mascara', slug: 'mascara', description: 'Chuốt mi và định hình hàng mi.', sortOrder: 200 },
+    { name: 'Kẻ mắt', slug: 'ke-mat', description: 'Sản phẩm kẻ viền mắt.', sortOrder: 210 },
+    { name: 'Kẻ mày', slug: 'ke-may', description: 'Sản phẩm tạo dáng chân mày.', sortOrder: 220 },
+    { name: 'Kích mí', slug: 'kich-mi', description: 'Phụ kiện hỗ trợ tạo nếp mí.', sortOrder: 230 },
+    { name: 'Kẹp mi', slug: 'kep-mi', description: 'Dụng cụ uốn cong hàng mi.', sortOrder: 240 },
+    { name: 'Kem body', slug: 'kem-body', description: 'Kem dưỡng thể và sản phẩm dưỡng da cơ thể.', sortOrder: 250 },
+    { name: 'Sữa tắm', slug: 'sua-tam', description: 'Làm sạch da cơ thể.', sortOrder: 260 },
+    { name: 'Tẩy da chết body', slug: 'tay-da-chet-body', description: 'Làm mới bề mặt da cơ thể.', sortOrder: 270 },
+    { name: 'Tẩy lông', slug: 'tay-long', description: 'Sản phẩm hỗ trợ loại bỏ lông cơ thể.', sortOrder: 280 },
+    { name: 'Body mist', slug: 'body-mist', description: 'Xịt thơm nhẹ cho cơ thể.', sortOrder: 290 },
+    { name: 'Lăn nách', slug: 'lan-nach', description: 'Sản phẩm chăm sóc vùng dưới cánh tay.', sortOrder: 300 },
+    { name: 'Dung dịch vệ sinh', slug: 'ddvs', description: 'Sản phẩm vệ sinh dịu nhẹ vùng ngoài.', sortOrder: 310 },
+    { name: 'Dầu gội', slug: 'dau-goi', description: 'Làm sạch và chăm sóc tóc.', sortOrder: 320 },
+    { name: 'Chăm sóc da đầu', slug: 'da-dau', description: 'Sản phẩm chuyên biệt cho da đầu.', sortOrder: 330 },
+    { name: 'Nước hoa', slug: 'nuoc-hoa', description: 'Nước hoa và hương thơm cá nhân.', sortOrder: 340 },
+    { name: 'Phụ kiện', slug: 'phu-kien', description: 'Dụng cụ và phụ kiện làm đẹp.', sortOrder: 350 },
+    { name: 'Mút trang điểm', slug: 'mut-trang-diem', description: 'Mút và bông dặm nền.', sortOrder: 360 },
+    { name: 'Bông tẩy trang', slug: 'bong-tay-trang', description: 'Bông dùng trong bước làm sạch và chăm sóc da.', sortOrder: 370 },
+    { name: 'Kem đánh răng', slug: 'kem-danh-rang', description: 'Chăm sóc răng miệng hằng ngày.', sortOrder: 380 },
   ];
   for (const category of productCategories) await prisma.productCategory.upsert({ where: { slug: category.slug }, update: category, create: category });
   const brands = [
@@ -67,12 +70,12 @@ const seedSampleContent = async () => {
   const author = await prisma.user.findFirst({ where: { role: 'ADMIN', deletedAt: null } });
   const category = await prisma.blogCategory.findFirst({ where: { slug: 'cham-soc-da' } });
   const brand = await prisma.productBrand.findFirst({ where: { slug: 'midi-cosmetics' } });
-  const productCategory = await prisma.productCategory.findFirst({ where: { slug: 'skincare' } });
+  const productCategory = await prisma.productCategory.findFirst({ where: { slug: 'serum' } });
 
   if (author && category) {
     await prisma.blogPost.upsert({
       where: { slug: 'routine-cham-soc-da-don-gian' },
-      update: {},
+      update: { isFeatured: true, featuredOrder: 0 },
       create: {
         authorId: author.id,
         categoryId: category.id,
@@ -81,6 +84,8 @@ const seedSampleContent = async () => {
         excerpt: 'Một routine dễ bắt đầu cho làn da khỏe và đủ ẩm.',
         content: '<p>Bắt đầu với làm sạch dịu nhẹ, sau đó dùng serum cấp ẩm, kem dưỡng và chống nắng vào buổi sáng.</p>',
         status: 'PUBLISHED',
+        isFeatured: true,
+        featuredOrder: 0,
         readingMinutes: 1,
         publishedAt: new Date(),
       },
@@ -126,15 +131,11 @@ const seedSettings = async () => {
 };
 
 const main = async () => {
-  await seedUsers();
   await seedBlogTaxonomy();
   await seedProductTaxonomy();
   await seedSampleContent();
   await seedSettings();
-  console.log('Seed completed.');
-  console.table([
-    { role: 'ADMIN', email: isProduction || !allowAdminSeed ? 'not seeded' : devAdminEmail },
-  ]);
+  console.log('Seed completed without creating or changing any admin account.');
 };
 
 main().catch((error) => { console.error(error); process.exit(1); }).finally(async () => prisma.$disconnect());

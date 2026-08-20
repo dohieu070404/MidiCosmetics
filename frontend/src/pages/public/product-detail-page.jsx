@@ -1,120 +1,93 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Container } from '@/components/common/container';
-import { HorizontalScroller } from '@/components/common/horizontal-scroller';
-import { ImageWithFallback } from '@/components/common/image-with-fallback';
-import { PageShell } from '@/components/common/page-shell';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ROUTE_PATHS } from '@/app/router/route-paths';
-import { formatVnd, publicApi } from '@/lib/api/public-api';
+import { ArrowRight, Check, ShoppingBag } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 
-const hasValue = (value) => value !== null && value !== undefined && String(value).trim() !== '';
+import { ROUTE_PATHS } from "@/app/router/route-paths";
+import { Container } from "@/components/common/container";
+import { StatePanel } from "@/components/common/state-panel";
+import { ProductCard } from "@/components/commerce/product-card";
+import { ProductGallery } from "@/components/commerce/product-gallery";
+import { QuantityStepper } from "@/components/commerce/quantity-stepper";
+import { Button } from "@/components/ui/button";
+import { formatVnd, publicApi } from "@/lib/api/public-api";
+import { useAppStore } from "@/stores/app-store";
+import { useCartStore } from "@/stores/cart-store";
 
-const DetailSection = ({ title, children, html }) => {
-  if (!hasValue(html || children)) return null;
+const has = (value) => value !== null && value !== undefined && String(value).trim() !== "";
+
+function DetailBlock({ title, value, html = false }) {
+  if (!has(value)) return null;
   return (
-    <section className="rounded-[1.75rem] border border-border bg-card/70 p-5 sm:p-6">
-      <h2 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
-      {html ? (
-        <div className="prose prose-sm mt-4 max-w-none whitespace-pre-wrap break-words leading-8 text-muted-foreground prose-p:my-3 prose-ul:my-3 prose-li:my-1 dark:prose-invert" dangerouslySetInnerHTML={{ __html: html }} />
-      ) : (
-        <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-8 text-muted-foreground">{children}</p>
-      )}
-    </section>
-  );
-};
-
-const getProductImages = (product) => {
-  const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
-  if (images.length) return images;
-  return [product.mainImage || null];
-};
-
-function RelatedProductCard({ item }) {
-  return (
-    <Card className="h-full overflow-hidden bg-card/80">
-      <CardContent className="flex h-full flex-col p-0">
-        <Link to={ROUTE_PATHS.productDetail(item.slug)}><ImageWithFallback src={item.mainImage || item.images?.[0]} alt={item.name} className="aspect-[4/5] w-full object-cover sm:aspect-square" loading="lazy" /></Link>
-        <div className="flex flex-1 flex-col p-4">
-          <Link to={ROUTE_PATHS.productDetail(item.slug)} className="line-clamp-2 font-medium leading-snug">{item.name}</Link>
-          <p className="mt-2 text-sm text-primary">{item.formattedPrice || formatVnd(item.price, item.currency)}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <details className="group border-t border-border py-5" open>
+      <summary className="cursor-pointer list-none font-display text-xl font-normal">{title}</summary>
+      {html ? <div className="prose mt-4 max-w-none break-words text-[0.96rem] leading-7 text-muted-foreground" dangerouslySetInnerHTML={{ __html: value }} /> : <p className="mt-4 whitespace-pre-wrap text-[0.96rem] leading-7 text-muted-foreground">{value}</p>}
+    </details>
   );
 }
 
 export function ProductDetailPage() {
   const { slug } = useParams();
   const [data, setData] = useState(null);
-  const [selected, setSelected] = useState(0);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const addItem = useCartStore((state) => state.addItem);
+  const notify = useAppStore((state) => state.notify);
+  const product = data?.product;
 
   useEffect(() => {
-    let alive = true;
+    let active = true;
     publicApi.getProduct(slug)
-      .then((res) => { if (alive) { setData(res.data); setError(''); setSelected(0); } })
-      .catch((err) => { if (alive) setError(err.message); });
-    return () => { alive = false; };
+      .then((response) => {
+        if (!active) return;
+        setData(response.data);
+        setError("");
+        const item = response.data?.product;
+        if (item) publicApi.trackInterest({ eventType: "PRODUCT_VIEWED", productUuid: item.uuid || item.id }).catch(() => null);
+      })
+      .catch((err) => { if (active) setError(err.message); });
+    return () => { active = false; };
   }, [slug]);
 
-  if (error) return <PageShell><Container><div className="rounded-2xl bg-destructive/10 p-4 text-destructive">{error}</div></Container></PageShell>;
-  if (!data?.product) return <PageShell><Container><div className="h-96 animate-pulse rounded-[2rem] bg-secondary/60" /></Container></PageShell>;
+  if (error && !product) return <Container className="py-16"><StatePanel type="error" title="Không mở được sản phẩm" description={error} /></Container>;
+  if (!product) return <Container className="py-16"><StatePanel type="loading" title="Đang chuẩn bị sản phẩm" description="Một chút nữa thôi..." /></Container>;
 
-  const product = data.product;
-  const images = getProductImages(product);
+  const images = product.images?.length ? product.images : [product.mainImage];
+  const unavailable = product.status !== "ACTIVE" || Number(product.stock) === 0;
+  const add = () => {
+    if (unavailable) return;
+    addItem(product, quantity);
+    notify(`${product.name} đã được thêm vào giỏ.`);
+    publicApi.trackInterest({ eventType: "ADDED_TO_CART", productUuid: product.uuid || product.id, metadata: { quantity } }).catch(() => null);
+  };
 
   return (
-    <PageShell className="py-10 sm:py-14 lg:py-20">
-      <Container>
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-          <div className="min-w-0">
-            <ImageWithFallback src={images[selected]} alt={product.name} className="aspect-square w-full rounded-[1.75rem] object-cover sm:rounded-[2rem]" />
-            {images.length > 1 ? (
-              <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-                {images.map((image, index) => (
-                  <button key={`${image || 'placeholder'}-${index}`} type="button" onClick={() => setSelected(index)} className={`min-w-20 overflow-hidden rounded-2xl border ${selected === index ? 'border-primary' : 'border-border'}`}>
-                    <ImageWithFallback src={image} alt={product.name} className="aspect-square w-20 object-cover" loading="lazy" />
-                  </button>
-                ))}
-              </div>
-            ) : null}
+    <div className="pb-24 lg:pb-36">
+      <Container className="py-6 text-xs uppercase tracking-[0.1em] text-muted-foreground"><Link to={ROUTE_PATHS.products} className="transition-colors hover:text-foreground">Sản phẩm</Link> <span className="mx-2">/</span> {product.name}</Container>
+      <Container className="grid gap-10 lg:grid-cols-[1.08fr_.92fr] lg:gap-16">
+        <ProductGallery images={images} name={product.name} />
+        <div className="lg:sticky lg:top-32 lg:self-start">
+          <p className="midi-eyebrow">{product.category?.name || product.brand?.name || "Midi Cosmetics"}</p>
+          <h1 className="mt-5 font-display text-5xl font-normal leading-[.94] tracking-[-0.055em] sm:text-6xl">{product.name}</h1>
+          <p className="mt-5 font-display text-2xl">{product.formattedPrice || formatVnd(product.price, product.currency)}</p>
+          {product.shortDescription ? <p className="mt-6 text-base leading-8 text-muted-foreground">{product.shortDescription}</p> : null}
+          <div className="mt-7 grid grid-cols-[auto_1fr] gap-3">
+            <QuantityStepper value={quantity} onChange={setQuantity} max={product.stock ? Math.min(20, product.stock) : 20} />
+            <Button type="button" onClick={add} disabled={unavailable} className="midi-link-arrow w-full">{unavailable ? "Tạm hết hàng" : "Thêm vào giỏ"} {!unavailable ? <ShoppingBag /> : null}</Button>
           </div>
-          <div className="min-w-0 lg:pt-4">
-            <Badge variant="luxury">{product.category?.name || product.brand?.name || 'Midi Cosmetics'}</Badge>
-            <h1 className="mt-5 text-balance font-display text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">{product.name}</h1>
-            <p className="mt-4 text-2xl font-semibold text-primary sm:text-3xl">{product.formattedPrice || formatVnd(product.price, product.currency)}</p>
-            {product.description ? (
-              <div className="prose prose-sm mt-6 max-w-none whitespace-pre-wrap break-words leading-8 text-muted-foreground prose-p:my-3 dark:prose-invert" dangerouslySetInnerHTML={{ __html: product.description }} />
-            ) : (
-              <p className="mt-6 whitespace-pre-wrap break-words text-base leading-8 text-muted-foreground">Đang cập nhật mô tả sản phẩm.</p>
-            )}
-            <div className="mt-8 grid gap-3 rounded-[1.5rem] border border-border bg-card/60 p-4 text-sm sm:grid-cols-2">
-              <div><span className="font-medium">Thương hiệu:</span> {product.brand?.name || '-'}</div>
-              <div><span className="font-medium">Danh mục:</span> {product.category?.name || '-'}</div>
-            </div>
+          <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground"><Check className="size-4 text-primary" /> Không cần tài khoản · Tạo phiếu rồi gửi qua Messenger</p>
+          <div className="mt-8">
+            <DetailBlock title="Công dụng" value={product.benefits || product.description} html />
+            <DetailBlock title="Loại da phù hợp" value={product.skinType} />
+            <DetailBlock title="Thành phần" value={product.ingredients} html />
+            <DetailBlock title="Cách sử dụng" value={product.howToUse} html />
+            <DetailBlock title="Lưu ý" value={product.caution} />
           </div>
+          <Button asChild variant="outline" className="midi-link-arrow mt-6"><Link to={ROUTE_PATHS.cart}>Xem giỏ và tạo phiếu <ArrowRight /></Link></Button>
         </div>
-
-        <div className="mt-12 grid gap-5 lg:mt-14 lg:grid-cols-2">
-          <DetailSection title="Công dụng">{product.benefits}</DetailSection>
-          <DetailSection title="Loại da phù hợp">{product.skinType}</DetailSection>
-          <DetailSection title="Thành phần" html={product.ingredients} />
-          <DetailSection title="Cách sử dụng" html={product.howToUse} />
-          <DetailSection title="Lưu ý sử dụng">{product.caution}</DetailSection>
-        </div>
-
-        {(data.related || []).length ? (
-          <section className="mt-14 lg:mt-16">
-            <h2 className="font-display text-2xl font-semibold sm:text-3xl">Sản phẩm liên quan</h2>
-            <HorizontalScroller className="mt-6" itemClassName="min-w-[62%] sm:min-w-[34%] lg:min-w-[23%]" ariaLabel="Sản phẩm liên quan">
-              {(data.related || []).map((item) => <RelatedProductCard key={item.uuid || item.id} item={item} />)}
-            </HorizontalScroller>
-          </section>
-        ) : null}
       </Container>
-    </PageShell>
+      {data.related?.length ? (
+        <Container className="mt-24"><div className="flex items-end justify-between border-b border-border pb-7"><div><p className="midi-eyebrow">Có thể bạn sẽ thích</p><h2 className="mt-3 font-display text-4xl font-normal tracking-[-0.045em]">Sản phẩm liên quan</h2></div></div><div className="mt-8 grid gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">{data.related.slice(0, 4).map((item) => <ProductCard key={item.uuid || item.id} product={item} />)}</div></Container>
+      ) : null}
+    </div>
   );
 }

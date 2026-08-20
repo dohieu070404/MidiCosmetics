@@ -7,6 +7,7 @@ import { adminBootstrapService } from './admin-bootstrap.service.js';
 import { adminProfileService } from './admin-profile.service.js';
 import { adminNotificationRecipientService } from './admin-notification-recipient.service.js';
 import { adminHomepageService } from './admin-homepage.service.js';
+import { adminOperationsService } from './admin-operations.service.js';
 
 const ok = (res, message, data = {}, meta = {}) => res.success({ statusCode: HTTP_STATUS.OK, message, data, meta });
 const created = (res, message, data = {}) => res.success({ statusCode: HTTP_STATUS.CREATED, message, data });
@@ -317,6 +318,7 @@ export const adminController = {
     const result = await adminService.listCollections(req.validated.query);
     return ok(res, 'Product collections fetched successfully', { collections: result.items }, result.pagination);
   }),
+  getCollection: asyncHandler(async (req, res) => ok(res, 'Collection fetched successfully', { collection: await adminService.getCollection(req.validated.params.uuid) })),
   createCollection: asyncHandler(async (req, res) => {
     const collection = await adminService.createCollection(req.validated.body);
     await withAudit(req, { action: 'CREATE_PRODUCT_COLLECTION', entityType: 'ProductCollection', entityId: collection.uuid });
@@ -327,6 +329,11 @@ export const adminController = {
     await withAudit(req, { action: 'UPDATE_PRODUCT_COLLECTION', entityType: 'ProductCollection', entityId: collection.uuid });
     return ok(res, 'Product collection updated successfully', { collection });
   }),
+  setCollectionProducts: asyncHandler(async (req, res) => {
+    const collection = await adminService.setCollectionProducts(req.validated.params.uuid, req.validated.body.items);
+    await withAudit(req, { action: 'UPDATE_COLLECTION_PRODUCTS', entityType: 'ProductCollection', entityId: collection.uuid, afterData: { productUuids: collection.products.map((item) => item.product.uuid) } });
+    return ok(res, 'Sản phẩm trong collection đã được cập nhật.', { collection });
+  }),
   deleteCollection: asyncHandler(async (req, res) => {
     await adminService.deleteCollection(req.validated.params.uuid);
     await withAudit(req, { action: 'DELETE_PRODUCT_COLLECTION', entityType: 'ProductCollection', entityId: req.validated.params.uuid });
@@ -336,6 +343,29 @@ export const adminController = {
   listProducts: asyncHandler(async (req, res) => {
     const result = await adminService.listProducts(req.validated.query);
     return ok(res, 'Products fetched successfully', { products: result.items }, result.pagination);
+  }),
+  downloadInventoryExport: asyncHandler(async (req, res) => {
+    const inventory = await adminService.getInventoryExport();
+    await withAudit(req, { action: 'EXPORT_PRODUCT_INVENTORY', entityType: 'Product', metadata: { filename: inventory.filename } });
+    res.setHeader('Content-Type', inventory.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${inventory.filename}"`);
+    res.setHeader('Content-Length', inventory.buffer.length);
+    return res.send(inventory.buffer);
+  }),
+  archiveProductsBulk: asyncHandler(async (req, res) => {
+    const result = await adminService.archiveProductsBulk(req.validated.body.uuids);
+    await withAudit(req, { action: 'ARCHIVE_PRODUCTS_BULK', entityType: 'Product', afterData: result, metadata: { uuids: req.validated.body.uuids } });
+    return ok(res, 'Sản phẩm đã được chuyển vào thùng rác và có thể khôi phục.', result);
+  }),
+  restoreProductsBulk: asyncHandler(async (req, res) => {
+    const result = await adminService.restoreProductsBulk(req.validated.body.uuids);
+    await withAudit(req, { action: 'RESTORE_PRODUCTS_BULK', entityType: 'Product', afterData: result, metadata: { uuids: req.validated.body.uuids } });
+    return ok(res, 'Sản phẩm đã được khôi phục ở trạng thái tạm ẩn.', result);
+  }),
+  permanentlyDeleteProductsBulk: asyncHandler(async (req, res) => {
+    const result = await adminService.permanentlyDeleteProductsBulk(req.validated.body.uuids);
+    await withAudit(req, { action: 'PERMANENT_DELETE_PRODUCTS_BULK', entityType: 'Product', afterData: result, metadata: { uuids: req.validated.body.uuids } });
+    return ok(res, 'Sản phẩm đã được xóa vĩnh viễn; snapshot trong phiếu cũ vẫn được giữ.', result);
   }),
   getProduct: asyncHandler(async (req, res) => ok(res, 'Product fetched successfully', { product: await adminService.getProduct(req.validated.params.uuid) })),
   createProduct: asyncHandler(async (req, res) => {
@@ -399,14 +429,49 @@ export const adminController = {
     return ok(res, 'Media assets fetched successfully', { media: result.items }, result.pagination);
   }),
   uploadImage: asyncHandler(async (req, res) => {
-    const media = await adminService.uploadImage(req.user, req.file, req.body);
+    const media = await adminService.uploadImage(req.user, req.file, req.validated.body);
     await withAudit(req, { action: 'UPLOAD_MEDIA', entityType: 'MediaAsset', entityId: media.uuid });
     return created(res, 'Image uploaded successfully', { media });
+  }),
+  updateMedia: asyncHandler(async (req, res) => {
+    const media = await adminService.updateMedia(req.validated.params.uuid, req.validated.body);
+    await withAudit(req, { action: 'UPDATE_MEDIA', entityType: 'MediaAsset', entityId: media.uuid, afterData: media });
+    return ok(res, 'Thông tin ảnh đã được cập nhật.', { media });
   }),
   deleteMedia: asyncHandler(async (req, res) => {
     await adminService.deleteMedia(req.validated.params.uuid);
     await withAudit(req, { action: 'DELETE_MEDIA', entityType: 'MediaAsset', entityId: req.validated.params.uuid });
     return deleted(res, 'Media deleted successfully');
+  }),
+
+  listQuotes: asyncHandler(async (req, res) => {
+    const result = await adminOperationsService.listQuotes(req.validated.query);
+    return ok(res, 'Danh sách báo giá đã được tải.', { quotes: result.items }, result.pagination);
+  }),
+  getQuote: asyncHandler(async (req, res) => ok(res, 'Chi tiết báo giá đã được tải.', { quote: await adminOperationsService.getQuote(req.validated.params.uuid) })),
+  updateQuoteStatus: asyncHandler(async (req, res) => {
+    const quote = await adminOperationsService.updateQuoteStatus(req.validated.params.uuid, req.validated.body.status);
+    await withAudit(req, { action: 'UPDATE_QUOTE_STATUS', entityType: 'Quote', entityId: quote.uuid, afterData: { status: quote.status } });
+    return ok(res, 'Trạng thái báo giá đã được cập nhật.', { quote });
+  }),
+  archiveQuotes: asyncHandler(async (req, res) => {
+    const result = await adminOperationsService.archiveQuotes(req.validated.body);
+    await withAudit(req, { action: 'ARCHIVE_QUOTES_BULK', entityType: 'Quote', afterData: result, metadata: { mode: req.validated.body.mode, uuids: req.validated.body.uuids } });
+    return ok(res, 'Các phiếu đã được chuyển vào lưu trữ an toàn.', result);
+  }),
+  restoreQuotes: asyncHandler(async (req, res) => {
+    const result = await adminOperationsService.restoreQuotes(req.validated.body);
+    await withAudit(req, { action: 'RESTORE_QUOTES_BULK', entityType: 'Quote', afterData: result, metadata: { uuids: req.validated.body.uuids } });
+    return ok(res, 'Các phiếu đã được khôi phục.', result);
+  }),
+  interestAnalytics: asyncHandler(async (req, res) => ok(res, 'Dữ liệu quan tâm đã được tải.', await adminOperationsService.interestAnalytics(req.validated.query))),
+  listEmailLogs: asyncHandler(async (req, res) => {
+    const result = await adminOperationsService.listEmailLogs(req.validated.query);
+    return ok(res, 'Nhật ký email đã được tải.', { logs: result.items }, result.pagination);
+  }),
+  listAuditLogs: asyncHandler(async (req, res) => {
+    const result = await adminOperationsService.listAuditLogs(req.validated.query);
+    return ok(res, 'Nhật ký thao tác đã được tải.', { logs: result.items }, result.pagination);
   }),
 
   listImportJobs: asyncHandler(async (req, res) => {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api/admin-api';
 import { ImageWithFallback } from '@/components/common/image-with-fallback';
+import { MediaPicker } from '@/components/admin/media-picker';
 import { validateLocalImageFile } from '@/lib/media';
 import { ActionButton, AdminTable, DangerButton, FileInput, Notice, NumberInput, PageHeader, RequiredNote, SecondaryButton, SectionCard, SelectInput, RichTextEditor, StatusBadge, TabButtons, TextArea, TextInput, Toolbar, formatDate, normalizeIntegerInput } from './admin-shared';
 
@@ -29,6 +30,14 @@ export function AdminPostsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentThumbnailUrl, setCurrentThumbnailUrl] = useState('');
+  const [formBaseline, setFormBaseline] = useState(JSON.stringify(initial));
+  const isDirty = view === 'form' && (Boolean(thumbnail) || JSON.stringify(form) !== formBaseline);
+
+  useEffect(() => {
+    const warn = (event) => { if (isDirty) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isDirty]);
 
   const load = async () => {
     const [p, c, t] = await Promise.all([
@@ -81,12 +90,12 @@ export function AdminPostsPage() {
     return res.data.media.secureUrl;
   };
 
-  const openCreate = () => { setEditing(null); setForm(initial); setThumbnail(null); setCurrentThumbnailUrl(''); setError(''); setOk(''); setView('form'); };
+  const openCreate = () => { setEditing(null); setForm(initial); setFormBaseline(JSON.stringify(initial)); setThumbnail(null); setCurrentThumbnailUrl(''); setError(''); setOk(''); setView('form'); };
   const edit = (r) => {
     setEditing(r.uuid);
     setThumbnail(null);
     setCurrentThumbnailUrl(r.featuredImage?.secureUrl || '');
-    setForm({
+    const nextForm = {
       title: r.title || '',
       categoryUuid: r.category?.uuid || '',
       featuredImageUuid: r.featuredImage?.uuid || '',
@@ -96,10 +105,15 @@ export function AdminPostsPage() {
       tagUuids: (r.tags || []).map((item) => item.tag?.uuid).filter(Boolean),
       isFeatured: Boolean(r.isFeatured),
       featuredOrder: String(r.featuredOrder ?? 0),
-    });
+    };
+    setForm(nextForm);
+    setFormBaseline(JSON.stringify(nextForm));
     setView('form'); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const cancel = () => { setEditing(null); setForm(initial); setThumbnail(null); setCurrentThumbnailUrl(''); setView('list'); };
+  const cancel = () => {
+    if (isDirty && !window.confirm('Bạn có thay đổi chưa lưu. Rời form và bỏ các thay đổi?')) return;
+    setEditing(null); setForm(initial); setFormBaseline(JSON.stringify(initial)); setThumbnail(null); setCurrentThumbnailUrl(''); setView('list');
+  };
 
   async function submit(e) {
     e.preventDefault(); setLoading(true); setError(''); setOk('');
@@ -110,7 +124,7 @@ export function AdminPostsPage() {
       const payload = clean({ ...form, featuredImageUuid });
       if (editing) { await adminApi.updateBlogPost(editing, payload); setOk('Đã cập nhật bài viết.'); }
       else { await adminApi.createBlogPost(payload); setOk('Đã tạo bài viết.'); }
-      await load(); cancel();
+      await load(); setEditing(null); setForm(initial); setFormBaseline(JSON.stringify(initial)); setThumbnail(null); setCurrentThumbnailUrl(''); setView('list');
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
@@ -139,6 +153,7 @@ export function AdminPostsPage() {
             <SelectInput label="Danh mục" name="categoryUuid" value={form.categoryUuid} onChange={set}><option value="">Không chọn</option>{categories.map((c) => <option key={c.uuid} value={c.uuid}>{c.name}</option>)}</SelectInput>
             <SelectInput label="Trạng thái" name="status" value={form.status} onChange={set}><option value="DRAFT">Nháp</option><option value="PUBLISHED">Đăng bài</option><option value="ARCHIVED">Ẩn</option></SelectInput>
             <FileInput label="Ảnh cover" accept="image/png,image/jpeg,image/webp" onChange={(e) => { const file = e.target.files?.[0] || null; const fileError = validateLocalImageFile(file, 'Ảnh đại diện'); if (fileError) { setError(fileError); e.target.value = ''; setThumbnail(null); return; } setError(''); setThumbnail(file); }} hint="Chỉ hỗ trợ JPG, PNG, WEBP, tối đa 5MB. Chọn ảnh mới nếu muốn thay ảnh hiện tại." />
+            <div className="flex items-end"><MediaPicker label="Chọn cover từ thư viện" onSelect={(media) => { setThumbnail(null); setCurrentThumbnailUrl(media.secureUrl); setForm((current) => ({ ...current, featuredImageUuid: media.uuid })); }} /></div>
           </div>
           {thumbnailPreview ? <div className="mt-4 rounded-2xl border border-border p-3"><p className="mb-2 text-sm font-medium">Ảnh cover đang chọn</p><ImageWithFallback src={thumbnailPreview} alt={form.title || 'Ảnh bài viết'} className="max-h-64 w-full rounded-xl object-cover" /></div> : null}
         </SectionCard>

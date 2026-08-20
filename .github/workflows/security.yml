@@ -1,0 +1,59 @@
+name: Security and build checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://audit:audit@127.0.0.1:5432/audit?schema=public
+      DIRECT_URL: postgresql://audit:audit@127.0.0.1:5432/audit?schema=public
+    steps:
+      - name: Checkout complete history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Scan tracked source and Git history
+        run: node scripts/security-audit.mjs --history
+
+      - name: Generate ephemeral CI-only JWT secrets
+        run: node -e "const c=require('node:crypto'); console.log('JWT_ACCESS_SECRET='+c.randomBytes(48).toString('hex')); console.log('JWT_REFRESH_SECRET='+c.randomBytes(48).toString('hex'))" >> "$GITHUB_ENV"
+
+      - name: Install and verify backend
+        working-directory: backend
+        run: |
+          npm ci --ignore-scripts
+          npm run prisma:generate
+          npx prisma validate
+          find src prisma -name '*.js' -print0 | xargs -0 -n1 node --check
+          npm audit --omit=dev --audit-level=high
+
+      - name: Install and verify frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+          npm audit --omit=dev --audit-level=high

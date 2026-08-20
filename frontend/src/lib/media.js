@@ -1,4 +1,4 @@
-export const PLACEHOLDER_IMAGE_URL = 'https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&w=1200&q=80';
+export const PLACEHOLDER_IMAGE_URL = '/images/products/midi-rose-serum.svg';
 
 export const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
