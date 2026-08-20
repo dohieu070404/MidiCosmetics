@@ -1,4 +1,4 @@
-FROM node:24.19.0-bookworm-slim AS deps
+FROM node:26.7.0-bookworm-slim AS deps
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
@@ -21,7 +21,7 @@ COPY prisma ./prisma
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund --no-progress
 RUN ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma
 
-FROM node:24.19.0-bookworm-slim AS runtime
+FROM node:26.7.0-bookworm-slim AS runtime
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates dumb-init \
