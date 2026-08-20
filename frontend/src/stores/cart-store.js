@@ -65,4 +65,4 @@ export const useCartStore = create(
 );
 
 export const selectCartCount = (state) => state.items.reduce((total, item) => total + item.quantity, 0);
-export const selectCartSubtotal = (state) => state.items.reduce((total, item) => total + toNumber(item.price) * item.quantity, 0); s
+export const selectCartSubtotal = (state) => state.items.reduce((total, item) => total + toNumber(item.price) * item.quantity, 0); 
