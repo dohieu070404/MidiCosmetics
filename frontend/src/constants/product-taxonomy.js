@@ -23,9 +23,9 @@ export const PRODUCT_MENU_GROUPS = Object.freeze([
   }),
   Object.freeze({
     id: "makeup",
-    label: "Trang điểm",
-    shortLabel: "Trang điểm",
-    description: "Lớp nền trong trẻo, sắc môi hài hòa và điểm nhấn vừa đủ.",
+    label: "Make up",
+    shortLabel: "Make up",
+    description: "Lớp nền trong trẻo, sắc môi hài hòa.",
     image: "/images/editorial/hero-makeup-2026.webp",
     mobilePosition: "65% center",
     href: groupHref("makeup"),
@@ -38,8 +38,8 @@ export const PRODUCT_MENU_GROUPS = Object.freeze([
   }),
   Object.freeze({
     id: "body-hair",
-    label: "Cơ thể & tóc",
-    shortLabel: "Cơ thể & tóc",
+    label: "body & hair",
+    shortLabel: "body & hair",
     description: "Chăm sóc cơ thể, da đầu và mái tóc bằng những bước dễ duy trì.",
     image: "/images/editorial/hero-body-hair-2026.webp",
     mobilePosition: "69% center",
