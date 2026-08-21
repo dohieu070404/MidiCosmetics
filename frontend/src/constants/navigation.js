@@ -5,6 +5,7 @@ export const PUBLIC_NAVIGATION = Object.freeze([
   { label: "Sản phẩm", shortLabel: "Sản phẩm", href: ROUTE_PATHS.products, menuId: "all" },
   ...PRODUCT_MENU_GROUPS.map((group) => ({ label: group.label, shortLabel: group.shortLabel, href: group.href, menuId: group.id })),
   { label: "Tạp chí Midi", shortLabel: "Tạp chí", href: ROUTE_PATHS.blog },
+  { label: "Về MIDI", shortLabel: "Về MIDI", href: ROUTE_PATHS.about },
 ]);
 
 export const MOBILE_SECONDARY_NAVIGATION = Object.freeze([
