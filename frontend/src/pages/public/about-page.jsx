@@ -14,6 +14,10 @@ const DEFAULT_CONTENT = {
   intro:
     'Midi Cosmetics xây dựng một không gian tuyển chọn mỹ phẩm, chăm sóc cá nhân và hương thơm chính hãng dành cho người Việt.',
   imageUrl: '/images/products/midi-body-cream.svg',
+  eyebrow2: 'Về Midi Cosmetics',
+  title2: 'Vẻ đẹp nên nhẹ nhàng, tinh tế và dễ duy trì.',
+  intro2: 'Midi Cosmetics xây dựng một không gian tuyển chọn mỹ phẩm, chăm sóc cá nhân và hương thơm chính hãng dành cho người Việt.',
+  imageUrl2: '/images/products/midi-body-cream.svg',
   sectionEyebrow: 'Cách MIDI lựa chọn',
   sectionTitle: 'Ít hơn, nhưng đúng hơn.',
   paragraphOne:
@@ -30,7 +34,7 @@ export function AboutPage() {
       .then((response) =>
         setContent((current) => ({ ...current, ...(response.data.content || {}) })),
       )
-      .catch(() => {});
+      .catch(() => { });
   }, []);
   return (
     <div className="pb-24">
@@ -47,6 +51,21 @@ export function AboutPage() {
           alt="Sản phẩm Midi Cosmetics"
           className="h-full min-h-96 w-full object-cover"
         />
+      </section>
+      <section className="grid min-h-[38rem] bg-secondary lg:grid-cols-2">
+        <ImageWithFallback
+          src={mediaUrl(content.imageUrl)}
+          alt="Sản phẩm Midi Cosmetics"
+          className="h-full min-h-96 w-full object-cover"
+        />
+        <div className="flex flex-col justify-center px-6 py-20 sm:px-12 lg:px-[max(4rem,8vw)]">
+          <p className="midi-eyebrow">{content.eyebrow2}</p>
+          <h1 className="mt-5 font-display text-6xl font-normal leading-[.93] tracking-[-0.06em] sm:text-7xl">
+            {content.title2}
+          </h1>
+          <p className="mt-7 max-w-xl text-sm leading-8 text-muted-foreground">{content.intro2}</p>
+        </div>
+
       </section>
       <Container className="grid gap-10 py-20 lg:grid-cols-[.8fr_1.2fr]">
         <div>
