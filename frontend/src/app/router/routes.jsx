@@ -8,35 +8,95 @@ import { RouteErrorBoundary } from '@/components/common/route-error-boundary';
 import { RouteLoading } from '@/components/common/route-loading';
 import { ROUTE_PATHS, routePathToRouterPath } from '@/app/router/route-paths';
 
-const AdminDashboardPage = lazy(() => import('@/pages/admin/admin-dashboard-page').then((m) => ({ default: m.AdminDashboardPage })));
-const AdminPostsPage = lazy(() => import('@/pages/admin/admin-posts-page').then((m) => ({ default: m.AdminPostsPage })));
-const AdminProductsPage = lazy(() => import('@/pages/admin/admin-products-page').then((m) => ({ default: m.AdminProductsPage })));
-const AdminProductImportPage = lazy(() => import('@/pages/admin/admin-products-page').then((m) => ({ default: m.AdminProductImportPage })));
-const AdminProfilePage = lazy(() => import('@/pages/admin/admin-profile-page').then((m) => ({ default: m.AdminProfilePage })));
-const AdminNotificationRecipientsPage = lazy(() => import('@/pages/admin/admin-notification-recipients-page').then((m) => ({ default: m.AdminNotificationRecipientsPage }))); 
-const AdminTaxonomiesPage = lazy(() => import('@/pages/admin/admin-taxonomies-page').then((m) => ({ default: m.AdminTaxonomiesPage })));
-const AdminHomepagePage = lazy(() => import('@/pages/admin/admin-homepage-page').then((m) => ({ default: m.AdminHomepagePage })));
-const AdminCollectionsPage = lazy(() => import('@/pages/admin/admin-operations-pages').then((m) => ({ default: m.AdminCollectionsPage })));
-const AdminMediaPage = lazy(() => import('@/pages/admin/admin-operations-pages').then((m) => ({ default: m.AdminMediaPage })));
-const AdminQuotesPage = lazy(() => import('@/pages/admin/admin-operations-pages').then((m) => ({ default: m.AdminQuotesPage })));
-const AdminInterestAnalyticsPage = lazy(() => import('@/pages/admin/admin-operations-pages').then((m) => ({ default: m.AdminInterestAnalyticsPage })));
-const AdminEmailLogsPage = lazy(() => import('@/pages/admin/admin-operations-pages').then((m) => ({ default: m.AdminEmailLogsPage })));
-const AdminAuditLogsPage = lazy(() => import('@/pages/admin/admin-operations-pages').then((m) => ({ default: m.AdminAuditLogsPage })));
-const AboutPage = lazy(() => import('@/pages/public/about-page').then((m) => ({ default: m.AboutPage })));
-const BlogIndexPage = lazy(() => import('@/pages/public/blog-index-page').then((m) => ({ default: m.BlogIndexPage })));
-const BlogDetailPage = lazy(() => import('@/pages/public/blog-detail-page').then((m) => ({ default: m.BlogDetailPage })));
-const LoginPage = lazy(() => import('@/pages/auth/login-page').then((m) => ({ default: m.LoginPage })));
-const HomePage = lazy(() => import('@/pages/public/home-page').then((m) => ({ default: m.HomePage })));
-const NotFoundPage = lazy(() => import('@/pages/public/not-found-page').then((m) => ({ default: m.NotFoundPage })));
-const ProductCatalogPage = lazy(() => import('@/pages/public/product-catalog-page').then((m) => ({ default: m.ProductCatalogPage })));
-const ProductDetailPage = lazy(() => import('@/pages/public/product-detail-page').then((m) => ({ default: m.ProductDetailPage })));
-const CartPage = lazy(() => import('@/pages/public/cart-page').then((m) => ({ default: m.CartPage })));
-const QuotePage = lazy(() => import('@/pages/public/quote-page').then((m) => ({ default: m.QuotePage })));
-const CollectionsPage = lazy(() => import('@/pages/public/collections-page').then((m) => ({ default: m.CollectionsPage })));
-const CollectionDetailPage = lazy(() => import('@/pages/public/collections-page').then((m) => ({ default: m.CollectionDetailPage })));
-const ContactPage = lazy(() => import('@/pages/public/contact-page').then((m) => ({ default: m.ContactPage })));
+const lazyNamed = (importModule, exportName) =>
+  lazy(() => importModule().then((module) => ({ default: module[exportName] })));
 
-const withLoading = (Component) => <Suspense fallback={<RouteLoading />}><Component /></Suspense>;
+const AdminDashboardPage = lazyNamed(
+  () => import('@/pages/admin/admin-dashboard-page'),
+  'AdminDashboardPage',
+);
+const AdminPostsPage = lazyNamed(() => import('@/pages/admin/admin-posts-page'), 'AdminPostsPage');
+const AdminProductsPage = lazyNamed(
+  () => import('@/pages/admin/admin-products-page'),
+  'AdminProductsPage',
+);
+const AdminProductImportPage = lazyNamed(
+  () => import('@/pages/admin/admin-products-page'),
+  'AdminProductImportPage',
+);
+const AdminProfilePage = lazyNamed(
+  () => import('@/pages/admin/admin-profile-page'),
+  'AdminProfilePage',
+);
+const AdminNotificationRecipientsPage = lazyNamed(
+  () => import('@/pages/admin/admin-notification-recipients-page'),
+  'AdminNotificationRecipientsPage',
+);
+const AdminTaxonomiesPage = lazyNamed(
+  () => import('@/pages/admin/admin-taxonomies-page'),
+  'AdminTaxonomiesPage',
+);
+const AdminHomepagePage = lazyNamed(
+  () => import('@/pages/admin/admin-homepage-page'),
+  'AdminHomepagePage',
+);
+
+const AdminCollectionsPage = lazyNamed(
+  () => import('@/pages/admin/admin-operations-pages'),
+  'AdminCollectionsPage',
+);
+const AdminMediaPage = lazyNamed(
+  () => import('@/pages/admin/admin-operations-pages'),
+  'AdminMediaPage',
+);
+const AdminQuotesPage = lazyNamed(
+  () => import('@/pages/admin/admin-operations-pages'),
+  'AdminQuotesPage',
+);
+const AdminInterestAnalyticsPage = lazyNamed(
+  () => import('@/pages/admin/admin-operations-pages'),
+  'AdminInterestAnalyticsPage',
+);
+const AdminEmailLogsPage = lazyNamed(
+  () => import('@/pages/admin/admin-operations-pages'),
+  'AdminEmailLogsPage',
+);
+const AdminAuditLogsPage = lazyNamed(
+  () => import('@/pages/admin/admin-operations-pages'),
+  'AdminAuditLogsPage',
+);
+
+const AboutPage = lazyNamed(() => import('@/pages/public/about-page'), 'AboutPage');
+const BlogIndexPage = lazyNamed(() => import('@/pages/public/blog-index-page'), 'BlogIndexPage');
+const BlogDetailPage = lazyNamed(() => import('@/pages/public/blog-detail-page'), 'BlogDetailPage');
+const LoginPage = lazyNamed(() => import('@/pages/auth/login-page'), 'LoginPage');
+const HomePage = lazyNamed(() => import('@/pages/public/home-page'), 'HomePage');
+const NotFoundPage = lazyNamed(() => import('@/pages/public/not-found-page'), 'NotFoundPage');
+const ProductCatalogPage = lazyNamed(
+  () => import('@/pages/public/product-catalog-page'),
+  'ProductCatalogPage',
+);
+const ProductDetailPage = lazyNamed(
+  () => import('@/pages/public/product-detail-page'),
+  'ProductDetailPage',
+);
+const CartPage = lazyNamed(() => import('@/pages/public/cart-page'), 'CartPage');
+const QuotePage = lazyNamed(() => import('@/pages/public/quote-page'), 'QuotePage');
+const CollectionsPage = lazyNamed(
+  () => import('@/pages/public/collections-page'),
+  'CollectionsPage',
+);
+const CollectionDetailPage = lazyNamed(
+  () => import('@/pages/public/collections-page'),
+  'CollectionDetailPage',
+);
+const ContactPage = lazyNamed(() => import('@/pages/public/contact-page'), 'ContactPage');
+
+const withLoading = (Component) => (
+  <Suspense fallback={<RouteLoading />}>
+    <Component />
+  </Suspense>
+);
 
 export const router = createBrowserRouter([
   {
@@ -78,7 +138,10 @@ export const router = createBrowserRouter([
           { path: 'audit-logs', element: withLoading(AdminAuditLogsPage) },
           { path: 'settings', element: <Navigate to="../dashboard" replace /> },
           { path: 'profile', element: withLoading(AdminProfilePage) },
-          { path: 'notification-recipients', element: withLoading(AdminNotificationRecipientsPage) },
+          {
+            path: 'notification-recipients',
+            element: withLoading(AdminNotificationRecipientsPage),
+          },
           { path: 'homepage', element: withLoading(AdminHomepagePage) },
         ],
       },

@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 
 export const useAppStore = create((set) => ({
   commandMenuOpen: false,
@@ -6,6 +6,6 @@ export const useAppStore = create((set) => ({
   toast: null,
   setCommandMenuOpen: (open) => set({ commandMenuOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  notify: (message, type = "success") => set({ toast: { id: Date.now(), message, type } }),
+  notify: (message, type = 'success') => set({ toast: { id: Date.now(), message, type } }),
   clearToast: () => set({ toast: null }),
 }));

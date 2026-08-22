@@ -6,7 +6,10 @@ export const normalizeUrlInput = (value = '') =>
     .trim();
 
 export const isPrivateOrLocalHostname = (hostname) => {
-  const normalized = String(hostname || '').trim().toLowerCase().replace(/[\[\]]/g, '');
+  const normalized = String(hostname || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\[\]]/g, '');
   if (!normalized) return true;
   if (['localhost', 'localhost.localdomain'].includes(normalized)) return true;
   if (normalized.endsWith('.localhost')) return true;
@@ -29,11 +32,7 @@ export const isPrivateOrLocalHostname = (hostname) => {
 };
 
 export const validateRemoteHttpUrl = (value, options = {}) => {
-  const {
-    allowPrivateHost = false,
-    label = 'URL',
-    allowedExtensions,
-  } = options;
+  const { allowPrivateHost = false, label = 'URL', allowedExtensions } = options;
 
   const raw = normalizeUrlInput(value);
   if (!raw) return { ok: false, code: 'EMPTY_URL', message: `${label} rỗng` };
@@ -46,17 +45,29 @@ export const validateRemoteHttpUrl = (value, options = {}) => {
   }
 
   if (!['http:', 'https:'].includes(parsed.protocol)) {
-    return { ok: false, code: 'UNSUPPORTED_URL_PROTOCOL', message: `${label} chỉ được bắt đầu bằng http:// hoặc https://` };
+    return {
+      ok: false,
+      code: 'UNSUPPORTED_URL_PROTOCOL',
+      message: `${label} chỉ được bắt đầu bằng http:// hoặc https://`,
+    };
   }
 
   if (!allowPrivateHost && isPrivateOrLocalHostname(parsed.hostname)) {
-    return { ok: false, code: 'UNSAFE_URL_HOST', message: `${label} không được trỏ tới localhost/private IP` };
+    return {
+      ok: false,
+      code: 'UNSAFE_URL_HOST',
+      message: `${label} không được trỏ tới localhost/private IP`,
+    };
   }
 
   if (allowedExtensions?.length) {
     const pathname = parsed.pathname.toLowerCase();
     if (!allowedExtensions.some((ext) => pathname.endsWith(ext))) {
-      return { ok: false, code: 'UNSUPPORTED_URL_EXTENSION', message: `${label} không đúng định dạng ảnh được hỗ trợ` };
+      return {
+        ok: false,
+        code: 'UNSUPPORTED_URL_EXTENSION',
+        message: `${label} không đúng định dạng ảnh được hỗ trợ`,
+      };
     }
   }
 

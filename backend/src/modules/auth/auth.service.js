@@ -50,7 +50,10 @@ export const authService = {
 
     // Always perform one bcrypt comparison so an attacker cannot enumerate
     // admin emails from the response timing of a nonexistent account.
-    const isPasswordValid = await comparePassword(password, user?.passwordHash || DUMMY_PASSWORD_HASH);
+    const isPasswordValid = await comparePassword(
+      password,
+      user?.passwordHash || DUMMY_PASSWORD_HASH,
+    );
 
     if (!user || user.status !== 'ACTIVE' || user.role !== USER_ROLES.ADMIN || !isPasswordValid) {
       throw invalidCredentialsError();
@@ -104,7 +107,11 @@ export const authService = {
       },
     });
 
-    if (!storedRefreshToken || storedRefreshToken.user.deletedAt || storedRefreshToken.user.status !== 'ACTIVE') {
+    if (
+      !storedRefreshToken ||
+      storedRefreshToken.user.deletedAt ||
+      storedRefreshToken.user.status !== 'ACTIVE'
+    ) {
       throw ApiError.unauthorized('Invalid refresh token');
     }
 

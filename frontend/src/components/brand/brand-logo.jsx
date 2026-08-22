@@ -1,13 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link } from 'react-router-dom';
 
-import { ROUTE_PATHS } from "@/app/router/route-paths";
-import { cn } from "@/lib/utils";
+import { ROUTE_PATHS } from '@/app/router/route-paths';
+import { cn } from '@/lib/utils';
 
 export function BrandLogo({ className }) {
   return (
     <Link
       to={ROUTE_PATHS.home}
-      className={cn("group inline-flex min-w-0 items-center rounded-full", className)}
+      className={cn('group inline-flex min-w-0 items-center rounded-full', className)}
       aria-label="Về trang chủ Midi Cosmetics"
     >
       <img

@@ -42,7 +42,9 @@ export function AdminLayout() {
     };
 
     verifySession();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [accessToken, logoutStore, setSession]);
 
   const logout = async () => {
@@ -51,8 +53,14 @@ export function AdminLayout() {
     navigate(ROUTE_PATHS.adminLogin, { replace: true });
   };
 
-  if (checking) return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Đang kiểm tra đăng nhập...</div>;
-  if (!accessToken || user?.role !== 'ADMIN') return <Navigate to={ROUTE_PATHS.adminLogin} replace state={{ from: location }} />;
+  if (checking)
+    return (
+      <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">
+        Đang kiểm tra đăng nhập...
+      </div>
+    );
+  if (!accessToken || user?.role !== 'ADMIN')
+    return <Navigate to={ROUTE_PATHS.adminLogin} replace state={{ from: location }} />;
 
   return (
     <div className="min-h-dvh bg-[#f4eee7]">
@@ -64,13 +72,32 @@ export function AdminLayout() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="midi-eyebrow">Quản trị nội dung & tư vấn</p>
-                  <h1 className="font-display text-2xl font-normal tracking-tight text-foreground sm:text-3xl">Midi Cosmetics</h1>
+                  <h1 className="font-display text-2xl font-normal tracking-tight text-foreground sm:text-3xl">
+                    Midi Cosmetics
+                  </h1>
                   <p className="text-sm text-muted-foreground">{user.fullName} · Admin</p>
                 </div>
-                <button type="button" onClick={logout} className="w-fit border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] hover:bg-secondary lg:hidden">Đăng xuất</button>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="w-fit border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] hover:bg-secondary lg:hidden"
+                >
+                  Đăng xuất
+                </button>
               </div>
-              <nav className="flex snap-x gap-2 overflow-x-auto pb-2 lg:hidden" aria-label="Điều hướng quản trị trên di động">
-                {ADMIN_NAVIGATION.map((item) => <Link key={item.href} to={item.href} className="snap-start whitespace-nowrap border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-secondary">{item.label}</Link>)}
+              <nav
+                className="flex snap-x gap-2 overflow-x-auto pb-2 lg:hidden"
+                aria-label="Điều hướng quản trị trên di động"
+              >
+                {ADMIN_NAVIGATION.map((item) => (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className="snap-start whitespace-nowrap border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-secondary"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </nav>
             </div>
             <Outlet />

@@ -18,7 +18,7 @@ const startServer = async () => {
           env: env.nodeEnv,
           apiPrefix: env.apiPrefix,
         },
-        'HTTP server started'
+        'HTTP server started',
       );
     });
   } catch (error) {

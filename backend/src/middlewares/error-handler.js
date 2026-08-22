@@ -29,8 +29,14 @@ const mapPrismaError = (error) => {
       return new ApiError(
         HTTP_STATUS.SERVICE_UNAVAILABLE,
         'Database schema is not ready. Run the pending Prisma migrations and retry.',
-        [{ field: null, code: 'DATABASE_SCHEMA_NOT_READY', message: 'A required database table or column is unavailable.' }],
-        { code: 'DATABASE_SCHEMA_NOT_READY' }
+        [
+          {
+            field: null,
+            code: 'DATABASE_SCHEMA_NOT_READY',
+            message: 'A required database table or column is unavailable.',
+          },
+        ],
+        { code: 'DATABASE_SCHEMA_NOT_READY' },
       );
     }
 
@@ -38,19 +44,38 @@ const mapPrismaError = (error) => {
       return new ApiError(
         HTTP_STATUS.SERVICE_UNAVAILABLE,
         'Database is temporarily busy. Please retry shortly.',
-        [{ field: null, code: 'DATABASE_CONNECTION_LIMIT', message: 'The database connection limit was reached.' }],
-        { code: 'DATABASE_CONNECTION_LIMIT' }
+        [
+          {
+            field: null,
+            code: 'DATABASE_CONNECTION_LIMIT',
+            message: 'The database connection limit was reached.',
+          },
+        ],
+        { code: 'DATABASE_CONNECTION_LIMIT' },
       );
     }
 
-    return new ApiError(HTTP_STATUS.BAD_REQUEST, 'Database request failed', [
-      { field: null, code: error.code, message: env.isProduction ? 'Database request failed' : error.message },
-    ], { code: 'DATABASE_REQUEST_FAILED' });
+    return new ApiError(
+      HTTP_STATUS.BAD_REQUEST,
+      'Database request failed',
+      [
+        {
+          field: null,
+          code: error.code,
+          message: env.isProduction ? 'Database request failed' : error.message,
+        },
+      ],
+      { code: 'DATABASE_REQUEST_FAILED' },
+    );
   }
 
   if (error instanceof Prisma.PrismaClientValidationError) {
     return ApiError.badRequest('Invalid database query', [
-      { field: null, code: 'PRISMA_VALIDATION_ERROR', message: env.isProduction ? 'Invalid database query' : error.message },
+      {
+        field: null,
+        code: 'PRISMA_VALIDATION_ERROR',
+        message: env.isProduction ? 'Invalid database query' : error.message,
+      },
     ]);
   }
 
@@ -58,14 +83,19 @@ const mapPrismaError = (error) => {
     return new ApiError(
       HTTP_STATUS.SERVICE_UNAVAILABLE,
       'Database is temporarily unavailable.',
-      [{ field: null, code: 'DATABASE_UNAVAILABLE', message: 'The application could not connect to the database.' }],
-      { code: 'DATABASE_UNAVAILABLE' }
+      [
+        {
+          field: null,
+          code: 'DATABASE_UNAVAILABLE',
+          message: 'The application could not connect to the database.',
+        },
+      ],
+      { code: 'DATABASE_UNAVAILABLE' },
     );
   }
 
   return error;
 };
-
 
 const mapMulterError = (error) => {
   if (error instanceof multer.MulterError) {
@@ -77,7 +107,11 @@ const mapMulterError = (error) => {
 
     if (error.code === 'LIMIT_FILE_COUNT' || error.code === 'LIMIT_UNEXPECTED_FILE') {
       return ApiError.badRequest('Số lượng file tải lên không hợp lệ', [
-        { field: 'file', code: error.code, message: 'Vui lòng kiểm tra lại số lượng file tải lên.' },
+        {
+          field: 'file',
+          code: error.code,
+          message: 'Vui lòng kiểm tra lại số lượng file tải lên.',
+        },
       ]);
     }
 
@@ -114,7 +148,7 @@ const mapZodError = (error) => {
       field: issue.path.join('.') || null,
       code: issue.code,
       message: issue.message,
-    }))
+    })),
   );
 };
 
@@ -126,7 +160,8 @@ export const errorHandler = (error, req, res, next) => {
 
   const statusCode = normalizedError.statusCode || HTTP_STATUS.INTERNAL_SERVER_ERROR;
   const isOperational = normalizedError instanceof ApiError && normalizedError.isOperational;
-  const message = isOperational || env.isDevelopment ? normalizedError.message : 'Internal server error';
+  const message =
+    isOperational || env.isDevelopment ? normalizedError.message : 'Internal server error';
   const errors = Array.isArray(normalizedError.errors) ? normalizedError.errors : [];
 
   logger.error(
@@ -139,15 +174,16 @@ export const errorHandler = (error, req, res, next) => {
         ? { name: normalizedError.name, code: normalizedError.code, statusCode }
         : normalizedError,
     },
-    'Request failed'
+    'Request failed',
   );
 
   return sendError(res, {
     statusCode,
     message,
     code: normalizedError.code,
-    errors: env.isDevelopment && errors.length === 0 && normalizedError.stack
-      ? [{ field: null, code: 'STACK_TRACE', message: normalizedError.stack }]
-      : errors,
+    errors:
+      env.isDevelopment && errors.length === 0 && normalizedError.stack
+        ? [{ field: null, code: 'STACK_TRACE', message: normalizedError.stack }]
+        : errors,
   });
 };

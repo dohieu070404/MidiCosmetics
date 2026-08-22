@@ -1,17 +1,25 @@
 import { z } from 'zod';
-import { isStrongAdminPassword, ADMIN_PASSWORD_POLICY_MESSAGE } from '../../utils/admin-password-policy.js';
+import {
+  isStrongAdminPassword,
+  ADMIN_PASSWORD_POLICY_MESSAGE,
+} from '../../utils/admin-password-policy.js';
 import { isPrivateOrLocalHostname } from '../../utils/safe-url.js';
 
 const emptyParams = z.object({}).optional();
 const uuidParams = z.object({ uuid: z.string().uuid() });
 const INVALID_TEXT_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F<>]/;
-const safeText = (schema) => schema.refine((value) => value === undefined || value === null || !INVALID_TEXT_CHARS.test(String(value)), 'Nội dung chứa ký tự không hợp lệ');
+const safeText = (schema) =>
+  schema.refine(
+    (value) => value === undefined || value === null || !INVALID_TEXT_CHARS.test(String(value)),
+    'Nội dung chứa ký tự không hợp lệ',
+  );
 const optionalString = (max = 255) => safeText(z.string().trim().max(max).optional().nullable());
 const nullableUuid = z.string().uuid().optional().nullable();
 const normalizeDecimalString = (value) => {
   if (value === undefined) return undefined;
   if (value === null || value === '') return '__INVALID_DECIMAL__';
-  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '__INVALID_DECIMAL__';
+  if (typeof value === 'number')
+    return Number.isFinite(value) ? String(value) : '__INVALID_DECIMAL__';
 
   let normalized = String(value).trim().replace(/\s/g, '');
   if (!normalized || normalized.toLowerCase() === 'nan') return '__INVALID_DECIMAL__';
@@ -19,55 +27,95 @@ const normalizeDecimalString = (value) => {
   const lastDot = normalized.lastIndexOf('.');
 
   if (lastComma !== -1 && lastDot !== -1) {
-    normalized = lastComma > lastDot
-      ? normalized.replace(/\./g, '').replace(',', '.')
-      : normalized.replace(/,/g, '');
+    normalized =
+      lastComma > lastDot
+        ? normalized.replace(/\./g, '').replace(',', '.')
+        : normalized.replace(/,/g, '');
   } else if (lastComma !== -1) {
     const parts = normalized.split(',');
     const last = parts.at(-1) || '';
-    normalized = parts.length > 1 && last.length > 0 && last.length <= 2
-      ? `${parts.slice(0, -1).join('')}.${last}`
-      : normalized.replace(/,/g, '');
+    normalized =
+      parts.length > 1 && last.length > 0 && last.length <= 2
+        ? `${parts.slice(0, -1).join('')}.${last}`
+        : normalized.replace(/,/g, '');
   } else if (lastDot !== -1) {
     const parts = normalized.split('.');
     const last = parts.at(-1) || '';
-    normalized = parts.length > 2 || last.length === 3
-      ? normalized.replace(/\./g, '')
-      : normalized;
+    normalized = parts.length > 2 || last.length === 3 ? normalized.replace(/\./g, '') : normalized;
   }
 
   return normalized;
 };
 const decimalRequired = z.preprocess(
   normalizeDecimalString,
-  z.string().trim().regex(/^\d+(\.\d{1,2})?$/, 'Giá phải là số hợp lệ, ví dụ 100000, 100,000 hoặc 100.000')
+  z
+    .string()
+    .trim()
+    .regex(/^\d+(\.\d{1,2})?$/, 'Giá phải là số hợp lệ, ví dụ 100000, 100,000 hoặc 100.000'),
 );
 const decimalOptional = decimalRequired.optional();
-const decimalNullable = z.preprocess((value) => {
-  if (value === undefined) return undefined;
-  if (value === null || value === '') return null;
-  return normalizeDecimalString(value);
-}, z.union([z.string().trim().regex(/^\d+(\.\d{1,2})?$/), z.null()]).optional());
+const decimalNullable = z.preprocess(
+  (value) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    return normalizeDecimalString(value);
+  },
+  z
+    .union([
+      z
+        .string()
+        .trim()
+        .regex(/^\d+(\.\d{1,2})?$/),
+      z.null(),
+    ])
+    .optional(),
+);
 const stockInput = z.preprocess((value) => {
   if (value === undefined || value === null || value === '') return 0;
   const normalized = String(value).trim().replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '');
   return /^\d+$/.test(normalized) ? Number(normalized) : Number.NaN;
 }, z.number().int().min(0).default(0));
 
-const safeSlug = z.string().trim().max(191).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/i, 'Slug chỉ được chứa chữ, số và dấu gạch ngang').optional();
+const safeSlug = z
+  .string()
+  .trim()
+  .max(191)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/i, 'Slug chỉ được chứa chữ, số và dấu gạch ngang')
+  .optional();
 const safeCode = (max = 100) => safeText(z.string().trim().max(max).optional().nullable());
-const safeHttpOrUploadUrl = (max = 1000) => safeText(z.string().trim().max(max).optional().nullable()).refine((value) => {
-  if (value === undefined || value === null || value === '') return true;
-  const text = String(value).trim();
-  if (/^\/(?:uploads|images|brand)\/[a-zA-Z0-9._/-]+$/.test(text) && !text.includes('..') && !text.includes('//')) return true;
-  try {
-    const parsed = new URL(text);
-    return ['http:', 'https:'].includes(parsed.protocol) && !isPrivateOrLocalHostname(parsed.hostname);
-  } catch {
-    return false;
-  }
-}, 'URL phải bắt đầu bằng http://, https:// hoặc đường dẫn ảnh nội bộ hợp lệ.');
-const listableStatus = z.enum(['DRAFT', 'PUBLISHED', 'ACTIVE', 'INACTIVE', 'ARCHIVED', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'VALID', 'INVALID', 'SUCCESS']);
+const safeHttpOrUploadUrl = (max = 1000) =>
+  safeText(z.string().trim().max(max).optional().nullable()).refine((value) => {
+    if (value === undefined || value === null || value === '') return true;
+    const text = String(value).trim();
+    if (
+      /^\/(?:uploads|images|brand)\/[a-zA-Z0-9._/-]+$/.test(text) &&
+      !text.includes('..') &&
+      !text.includes('//')
+    )
+      return true;
+    try {
+      const parsed = new URL(text);
+      return (
+        ['http:', 'https:'].includes(parsed.protocol) && !isPrivateOrLocalHostname(parsed.hostname)
+      );
+    } catch {
+      return false;
+    }
+  }, 'URL phải bắt đầu bằng http://, https:// hoặc đường dẫn ảnh nội bộ hợp lệ.');
+const listableStatus = z.enum([
+  'DRAFT',
+  'PUBLISHED',
+  'ACTIVE',
+  'INACTIVE',
+  'ARCHIVED',
+  'PENDING',
+  'PROCESSING',
+  'COMPLETED',
+  'FAILED',
+  'VALID',
+  'INVALID',
+  'SUCCESS',
+]);
 
 const booleanQuery = z.preprocess((value) => {
   if (typeof value === 'boolean') return value;
@@ -82,15 +130,17 @@ export const paginationQuerySchema = z.object({
   includeDeleted: booleanQuery.optional().default(false),
 });
 
-export const uuidOnlySchema = z.object({ body: z.object({}).optional(), params: uuidParams, query: z.object({}).optional() });
+export const uuidOnlySchema = z.object({
+  body: z.object({}).optional(),
+  params: uuidParams,
+  query: z.object({}).optional(),
+});
 
 export const listGenericSchema = z.object({
   body: z.object({}).optional(),
   params: emptyParams,
   query: paginationQuerySchema.extend({ status: listableStatus.optional() }),
 });
-
-
 
 export const listProductSchema = z.object({
   body: z.object({}).optional(),
@@ -110,61 +160,93 @@ export const productBulkSchema = z.object({
 });
 
 export const productPermanentDeleteSchema = z.object({
-  body: z.object({ uuids: z.array(z.string().uuid()).min(1).max(100), confirmation: z.literal('XOA VINH VIEN') }).strict(),
+  body: z
+    .object({
+      uuids: z.array(z.string().uuid()).min(1).max(100),
+      confirmation: z.literal('XOA VINH VIEN'),
+    })
+    .strict(),
   params: emptyParams,
   query: z.object({}).optional(),
 });
 
 export const featuredToggleSchema = z.object({
-  body: z.object({
-    isFeatured: z.boolean(),
-    featuredOrder: z.coerce.number().int().min(0).max(9999).optional().default(0),
-  }).strict(),
+  body: z
+    .object({
+      isFeatured: z.boolean(),
+      featuredOrder: z.coerce.number().int().min(0).max(9999).optional().default(0),
+    })
+    .strict(),
   params: uuidParams,
   query: z.object({}).optional(),
 });
 
 export const adminBootstrapSchema = z.object({
-  body: z.object({
-    email: z.string().trim().email().transform((value) => value.toLowerCase()),
-    password: z.string().min(10).max(128).refine(isStrongAdminPassword, ADMIN_PASSWORD_POLICY_MESSAGE),
-    bootstrapToken: z.string().min(32).max(512),
-  }).strict(),
+  body: z
+    .object({
+      email: z
+        .string()
+        .trim()
+        .email()
+        .transform((value) => value.toLowerCase()),
+      password: z
+        .string()
+        .min(10)
+        .max(128)
+        .refine(isStrongAdminPassword, ADMIN_PASSWORD_POLICY_MESSAGE),
+      bootstrapToken: z.string().min(32).max(512),
+    })
+    .strict(),
   params: emptyParams,
   query: z.object({}).optional(),
 });
 
-
 export const adminProfilePasswordChangeRequestSchema = z.object({
-  body: z.object({
-    currentPassword: z.string().min(1).max(128),
-    newPassword: z.string().min(10).max(128).refine(isStrongAdminPassword, ADMIN_PASSWORD_POLICY_MESSAGE),
-  }).strict(),
+  body: z
+    .object({
+      currentPassword: z.string().min(1).max(128),
+      newPassword: z
+        .string()
+        .min(10)
+        .max(128)
+        .refine(isStrongAdminPassword, ADMIN_PASSWORD_POLICY_MESSAGE),
+    })
+    .strict(),
   params: emptyParams,
   query: z.object({}).optional(),
 });
 
 export const adminProfilePasswordChangeVerifySchema = z.object({
-  body: z.object({
-    token: z.string().trim().min(32).max(256),
-  }).strict(),
+  body: z
+    .object({
+      token: z.string().trim().min(32).max(256),
+    })
+    .strict(),
   params: emptyParams,
   query: z.object({}).optional(),
 });
 
-
 export const notificationRecipientCreateSchema = z.object({
-  body: z.object({
-    email: z.string().trim().email().max(191).transform((value) => value.toLowerCase()),
-  }).strict(),
+  body: z
+    .object({
+      email: z
+        .string()
+        .trim()
+        .email()
+        .max(191)
+        .transform((value) => value.toLowerCase()),
+    })
+    .strict(),
   params: emptyParams,
   query: z.object({}).optional(),
 });
 
 export const notificationRecipientVerifySchema = z.object({
-  body: z.object({
-    token: z.string().trim().min(32).max(256),
-  }).strict(),
+  body: z
+    .object({
+      token: z.string().trim().min(32).max(256),
+    })
+    .strict(),
   params: emptyParams,
   query: z.object({}).optional(),
 });
@@ -181,9 +263,12 @@ export const categorySchema = z.object({
   query: z.object({}).optional(),
 });
 
-export const updateCategorySchema = categorySchema.extend({ params: uuidParams }).partial({ body: true }).extend({
-  body: categorySchema.shape.body.partial().strict(),
-});
+export const updateCategorySchema = categorySchema
+  .extend({ params: uuidParams })
+  .partial({ body: true })
+  .extend({
+    body: categorySchema.shape.body.partial().strict(),
+  });
 
 export const tagSchema = z.object({
   body: z.object({
@@ -241,12 +326,20 @@ export const updateCollectionSchema = z.object({
 });
 
 export const collectionProductsSchema = z.object({
-  body: z.object({
-    items: z.array(z.object({
-      productUuid: z.string().uuid(),
-      sortOrder: z.coerce.number().int().min(0).max(9999),
-    }).strict()).max(250),
-  }).strict(),
+  body: z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              productUuid: z.string().uuid(),
+              sortOrder: z.coerce.number().int().min(0).max(9999),
+            })
+            .strict(),
+        )
+        .max(250),
+    })
+    .strict(),
   params: uuidParams,
   query: z.object({}).optional(),
 });
@@ -258,7 +351,11 @@ export const mediaUpdateSchema = z.object({
 });
 
 export const mediaUploadSchema = z.object({
-  body: z.object({ altText: optionalString(255) }).strict().optional().default({}),
+  body: z
+    .object({ altText: optionalString(255) })
+    .strict()
+    .optional()
+    .default({}),
   params: emptyParams,
   query: z.object({}).optional(),
 });
@@ -287,10 +384,16 @@ export const quoteListSchema = z.object({
 });
 
 export const quoteBulkArchiveSchema = z.object({
-  body: z.object({
-    mode: z.enum(['SELECTED', 'UNOPENED']),
-    uuids: z.array(z.string().uuid()).max(100).optional().default([]),
-  }).strict().refine((value) => value.mode === 'UNOPENED' || value.uuids.length > 0, 'Hãy chọn ít nhất một phiếu.'),
+  body: z
+    .object({
+      mode: z.enum(['SELECTED', 'UNOPENED']),
+      uuids: z.array(z.string().uuid()).max(100).optional().default([]),
+    })
+    .strict()
+    .refine(
+      (value) => value.mode === 'UNOPENED' || value.uuids.length > 0,
+      'Hãy chọn ít nhất một phiếu.',
+    ),
   params: emptyParams,
   query: z.object({}).optional(),
 });
@@ -302,7 +405,9 @@ export const quoteBulkRestoreSchema = z.object({
 });
 
 export const quoteStatusSchema = z.object({
-  body: z.object({ status: z.enum(['CREATED', 'MESSENGER_OPENED', 'PROCESSED', 'EXPIRED']) }).strict(),
+  body: z
+    .object({ status: z.enum(['CREATED', 'MESSENGER_OPENED', 'PROCESSED', 'EXPIRED']) })
+    .strict(),
   params: uuidParams,
   query: z.object({}).optional(),
 });
@@ -310,10 +415,13 @@ export const quoteStatusSchema = z.object({
 export const analyticsQuerySchema = z.object({
   body: z.object({}).optional(),
   params: emptyParams,
-  query: z.object({
-    from: z.coerce.date().optional(),
-    to: z.coerce.date().optional(),
-  }).optional().default({}),
+  query: z
+    .object({
+      from: z.coerce.date().optional(),
+      to: z.coerce.date().optional(),
+    })
+    .optional()
+    .default({}),
 });
 
 export const adminLogListSchema = z.object({
@@ -383,7 +491,12 @@ export const productSchema = z.object({
     stock: stockInput,
     unit: optionalString(50),
     compareAtPrice: decimalNullable,
-    currency: z.string().trim().regex(/^[A-Z]{3}$/i).transform((value) => value.toUpperCase()).default('VND'),
+    currency: z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{3}$/i)
+      .transform((value) => value.toUpperCase())
+      .default('VND'),
     status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED']).default('DRAFT'),
     isFeatured: z.boolean().default(false),
     featuredOrder: z.coerce.number().int().min(0).default(0),
@@ -398,11 +511,14 @@ export const productSchema = z.object({
 });
 
 export const updateProductSchema = z.object({
-  body: productSchema.shape.body.extend({
-    price: decimalOptional,
-    compareAtPrice: decimalNullable,
-    stock: stockInput.optional(),
-  }).partial().strict(),
+  body: productSchema.shape.body
+    .extend({
+      price: decimalOptional,
+      compareAtPrice: decimalNullable,
+      stock: stockInput.optional(),
+    })
+    .partial()
+    .strict(),
   params: uuidParams,
   query: z.object({}).optional(),
 });
@@ -413,35 +529,65 @@ export const productStatusSchema = z.object({
   query: z.object({}).optional(),
 });
 
-
-
-const homepageSectionId = z.string().trim().regex(/^[a-z0-9-]{2,60}$/i, 'Homepage section id is invalid');
+const homepageSectionId = z
+  .string()
+  .trim()
+  .regex(/^[a-z0-9-]{2,60}$/i, 'Homepage section id is invalid');
 const homepageEntityUuid = z.string().uuid();
-const homepageText = (max = 500) => z.string().trim().max(max).optional().nullable().refine((value) => {
-  if (value === undefined || value === null || value === '') return true;
-  return !/<\/?script|javascript:|onerror\s*=|onclick\s*=|onload\s*=/i.test(String(value));
-}, 'Nội dung homepage không được chứa script hoặc event handler');
-const homepageSafeHref = z.string().trim().max(120).regex(/^\/(?:products|blog|about)(?:\/[-a-zA-Z0-9_/?=&]*|\?[-a-zA-Z0-9_=&-]+)?$/, 'CTA chỉ được trỏ tới route public an toàn').optional().nullable();
-const homepageHeroSlideSchema = z.object({
-  id: z.enum(['skincare', 'makeup', 'body-hair', 'fragrance']),
-  kicker: homepageText(80),
-  title: homepageText(100),
-  subtitle: homepageText(300),
-  imageUrl: safeHttpOrUploadUrl(1000),
-  href: homepageSafeHref,
-  mobilePosition: z.string().trim().max(40).regex(/^(?:(?:left|center|right|\d{1,3}%)(?:\s+(?:top|center|bottom|\d{1,3}%))?)$/, 'Vị trí ảnh mobile không hợp lệ').optional().nullable(),
-}).strip();
-const homepageSectionConfigSchema = z.object({
-  eyebrow: homepageText(80),
-  imageUrl: safeHttpOrUploadUrl(1000),
-  ctaLabel: homepageText(60),
-  ctaHref: homepageSafeHref,
-  secondaryLabel: homepageText(60),
-  secondaryHref: homepageSafeHref,
-  body: homepageText(2000),
-  limit: z.coerce.number().int().min(1).max(12).optional(),
-  slides: z.array(homepageHeroSlideSchema).max(4).optional(),
-}).strip();
+const homepageText = (max = 500) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .nullable()
+    .refine((value) => {
+      if (value === undefined || value === null || value === '') return true;
+      return !/<\/?script|javascript:|onerror\s*=|onclick\s*=|onload\s*=/i.test(String(value));
+    }, 'Nội dung homepage không được chứa script hoặc event handler');
+const homepageSafeHref = z
+  .string()
+  .trim()
+  .max(120)
+  .regex(
+    /^\/(?:products|blog|about)(?:\/[-a-zA-Z0-9_/?=&]*|\?[-a-zA-Z0-9_=&-]+)?$/,
+    'CTA chỉ được trỏ tới route public an toàn',
+  )
+  .optional()
+  .nullable();
+const homepageHeroSlideSchema = z
+  .object({
+    id: z.enum(['skincare', 'makeup', 'body-hair', 'fragrance']),
+    kicker: homepageText(80),
+    title: homepageText(100),
+    subtitle: homepageText(300),
+    imageUrl: safeHttpOrUploadUrl(1000),
+    href: homepageSafeHref,
+    mobilePosition: z
+      .string()
+      .trim()
+      .max(40)
+      .regex(
+        /^(?:(?:left|center|right|\d{1,3}%)(?:\s+(?:top|center|bottom|\d{1,3}%))?)$/,
+        'Vị trí ảnh mobile không hợp lệ',
+      )
+      .optional()
+      .nullable(),
+  })
+  .strip();
+const homepageSectionConfigSchema = z
+  .object({
+    eyebrow: homepageText(80),
+    imageUrl: safeHttpOrUploadUrl(1000),
+    ctaLabel: homepageText(60),
+    ctaHref: homepageSafeHref,
+    secondaryLabel: homepageText(60),
+    secondaryHref: homepageSafeHref,
+    body: homepageText(2000),
+    limit: z.coerce.number().int().min(1).max(12).optional(),
+    slides: z.array(homepageHeroSlideSchema).max(4).optional(),
+  })
+  .strip();
 
 export const homepageSectionParamsSchema = z.object({
   body: z.object({}).optional(),
@@ -450,13 +596,15 @@ export const homepageSectionParamsSchema = z.object({
 });
 
 export const homepageSectionUpdateSchema = z.object({
-  body: z.object({
-    title: homepageText(180),
-    subtitle: homepageText(500),
-    isEnabled: z.boolean().optional(),
-    sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
-    config: homepageSectionConfigSchema.optional(),
-  }).strict(),
+  body: z
+    .object({
+      title: homepageText(180),
+      subtitle: homepageText(500),
+      isEnabled: z.boolean().optional(),
+      sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
+      config: homepageSectionConfigSchema.optional(),
+    })
+    .strict(),
   params: z.object({ sectionId: homepageSectionId }),
   query: z.object({}).optional(),
 });
@@ -468,19 +616,28 @@ export const homepageSectionToggleSchema = z.object({
 });
 
 export const homepageSectionReorderSchema = z.object({
-  body: z.object({
-    sections: z.array(z.object({ id: homepageSectionId, sortOrder: z.coerce.number().int().min(0).max(9999) })).min(1).max(20),
-  }).strict(),
+  body: z
+    .object({
+      sections: z
+        .array(
+          z.object({ id: homepageSectionId, sortOrder: z.coerce.number().int().min(0).max(9999) }),
+        )
+        .min(1)
+        .max(20),
+    })
+    .strict(),
   params: emptyParams,
   query: z.object({}).optional(),
 });
 
 export const homepageFeaturedItemSchema = z.object({
-  body: z.object({
-    entityType: z.enum(['PRODUCT', 'POST']),
-    entityUuid: homepageEntityUuid,
-    sortOrder: z.coerce.number().int().min(0).max(9999).optional().default(0),
-  }).strict(),
+  body: z
+    .object({
+      entityType: z.enum(['PRODUCT', 'POST']),
+      entityUuid: homepageEntityUuid,
+      sortOrder: z.coerce.number().int().min(0).max(9999).optional().default(0),
+    })
+    .strict(),
   params: z.object({ sectionId: homepageSectionId }),
   query: z.object({}).optional(),
 });
@@ -492,9 +649,19 @@ export const homepageFeaturedItemDeleteSchema = z.object({
 });
 
 export const homepageFeaturedItemReorderSchema = z.object({
-  body: z.object({
-    items: z.array(z.object({ entityUuid: homepageEntityUuid, sortOrder: z.coerce.number().int().min(0).max(9999) })).min(1).max(50),
-  }).strict(),
+  body: z
+    .object({
+      items: z
+        .array(
+          z.object({
+            entityUuid: homepageEntityUuid,
+            sortOrder: z.coerce.number().int().min(0).max(9999),
+          }),
+        )
+        .min(1)
+        .max(50),
+    })
+    .strict(),
   params: z.object({ sectionId: homepageSectionId }),
   query: z.object({}).optional(),
 });

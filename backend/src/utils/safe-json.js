@@ -16,13 +16,20 @@ const SENSITIVE_KEY_PATTERNS = [
   /directUrl/i,
 ];
 
-const isSensitiveKey = (key = '') => SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(String(key)));
+const isSensitiveKey = (key = '') =>
+  SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(String(key)));
 
 const isDecimalLike = (value) => {
   if (!value || typeof value !== 'object') return false;
   if (value.constructor?.name === 'Decimal') return true;
   if (typeof value.toFixed === 'function' && typeof value.toNumber === 'function') return true;
-  if (typeof value.toString === 'function' && Array.isArray(value.d) && typeof value.e === 'number' && typeof value.s === 'number') return true;
+  if (
+    typeof value.toString === 'function' &&
+    Array.isArray(value.d) &&
+    typeof value.e === 'number' &&
+    typeof value.s === 'number'
+  )
+    return true;
   return false;
 };
 
@@ -35,13 +42,15 @@ const serializeJsonValue = (input, { redactSensitive = false } = {}) => {
 
   if (isDecimalLike(input)) return input.toString();
 
-  if (Array.isArray(input)) return input.map((item) => serializeJsonValue(item, { redactSensitive }));
+  if (Array.isArray(input))
+    return input.map((item) => serializeJsonValue(item, { redactSensitive }));
 
   if (typeof input === 'object') {
     return Object.entries(input).reduce((acc, [key, value]) => {
-      acc[key] = redactSensitive && isSensitiveKey(key)
-        ? '[REDACTED]'
-        : serializeJsonValue(value, { redactSensitive });
+      acc[key] =
+        redactSensitive && isSensitiveKey(key)
+          ? '[REDACTED]'
+          : serializeJsonValue(value, { redactSensitive });
       return acc;
     }, {});
   }

@@ -3,7 +3,10 @@ import { prisma } from '../../prisma/client.js';
 import { ApiError } from '../../errors/api-error.js';
 import { comparePassword, hashPassword } from '../../utils/password.js';
 import { hashToken } from '../../utils/token-hash.js';
-import { isStrongAdminPassword, ADMIN_PASSWORD_POLICY_MESSAGE } from '../../utils/admin-password-policy.js';
+import {
+  isStrongAdminPassword,
+  ADMIN_PASSWORD_POLICY_MESSAGE,
+} from '../../utils/admin-password-policy.js';
 import { getPermissionsForRole, USER_ROLES } from '../../constants/roles.js';
 
 export const ADMIN_VERIFICATION_TYPES = Object.freeze({

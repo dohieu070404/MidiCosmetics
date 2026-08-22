@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function useDialogFocus({ open, containerRef, initialFocusRef, returnFocusRef, onClose }) {
   const closeRef = useRef(onClose);
-  useEffect(() => { closeRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -23,12 +26,19 @@ export function useDialogFocus({ open, containerRef, initialFocusRef, returnFocu
         return;
       }
       if (event.key !== 'Tab') return;
-      const focusable = [...(containerRef.current?.querySelectorAll(FOCUSABLE) || [])].filter((element) => element.offsetParent !== null);
+      const focusable = [...(containerRef.current?.querySelectorAll(FOCUSABLE) || [])].filter(
+        (element) => element.offsetParent !== null,
+      );
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);

@@ -3,7 +3,8 @@ import { spawnSync } from 'node:child_process';
 
 const includeHistory = process.argv.includes('--history');
 const findings = [];
-const placeholder = /(?:^$|change[_ -]?me|replace|placeholder|example|dummy|sample|project_ref|url_encoded|username|password|region|cloud_name|api_key|api_secret|<[^>]+>|\$\{|process\.env)/i;
+const placeholder =
+  /(?:^$|change[_ -]?me|replace|placeholder|example|dummy|sample|project_ref|url_encoded|username|password|region|cloud_name|api_key|api_secret|<[^>]+>|\$\{|process\.env)/i;
 const localOnly = /(?:localhost|127\.0\.0\.1|@database:|midi_(?:local|dev)|local[_-]|admin@123)/i;
 
 const strongRules = [
@@ -14,10 +15,14 @@ const strongRules = [
   ['JWT_LITERAL', /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/],
 ];
 
-const sensitiveKey = /^(?:POSTGRES_PASSWORD|DATABASE_URL|DIRECT_URL|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|DEV_ADMIN_PASSWORD|ADMIN_BOOTSTRAP_TOKEN|RECAPTCHA_SECRET_KEY|CLOUDINARY_API_KEY|CLOUDINARY_API_SECRET|SMTP_PASS|PRIVATE_KEY|API_SECRET)$/i;
-const forbiddenPath = /(?:^|\/)(?:\.env|\.env\.(?!.*\.example$)[^/]+|id_rsa|credentials\.json|secrets?\.ya?ml)$|\.(?:pem|key|p12|pfx|jks|keystore)$/i;
+const sensitiveKey =
+  /^(?:POSTGRES_PASSWORD|DATABASE_URL|DIRECT_URL|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|DEV_ADMIN_PASSWORD|ADMIN_BOOTSTRAP_TOKEN|RECAPTCHA_SECRET_KEY|CLOUDINARY_API_KEY|CLOUDINARY_API_SECRET|SMTP_PASS|PRIVATE_KEY|API_SECRET)$/i;
+const forbiddenPath =
+  /(?:^|\/)(?:\.env|\.env\.(?!.*\.example$)[^/]+|id_rsa|credentials\.json|secrets?\.ya?ml)$|\.(?:pem|key|p12|pfx|jks|keystore)$/i;
 const allowedEnvExample = /(?:^|\/)\.env(?:\.[^/]+)?\.example$|(?:^|\/)\.env\.example$/i;
-const isConfigFile = (path) => /(?:^|\/)\.env(?:\.|$)|\.(?:ya?ml|toml|ini|conf)$/i.test(path) || /(?:^|\/)Dockerfile$/i.test(path);
+const isConfigFile = (path) =>
+  /(?:^|\/)\.env(?:\.|$)|\.(?:ya?ml|toml|ini|conf)$/i.test(path) ||
+  /(?:^|\/)Dockerfile$/i.test(path);
 
 // If ignored local environment files exist, use their configured secret values
 // as private signatures. This catches an exact value copied into source or Git
@@ -58,14 +63,17 @@ const report = (scope, path, line, rule) => findings.push({ scope, path, line, r
 
 const scanLine = (line, scope, path, lineNumber, { genericAssignments = true } = {}) => {
   for (const secret of knownLocalSecrets) {
-    if (line.includes(secret.value)) report(scope, path, lineNumber, `KNOWN_LOCAL_SECRET_${secret.key}`);
+    if (line.includes(secret.value))
+      report(scope, path, lineNumber, `KNOWN_LOCAL_SECRET_${secret.key}`);
   }
 
   for (const [rule, pattern] of strongRules) {
     if (pattern.test(line) && !placeholder.test(line)) report(scope, path, lineNumber, rule);
   }
 
-  const credentialUri = line.match(/\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp|cloudinary):\/\/[^\s/:]+:([^\s@/]+)@([^\s/?#]+)/i);
+  const credentialUri = line.match(
+    /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp|cloudinary):\/\/[^\s/:]+:([^\s@/]+)@([^\s/?#]+)/i,
+  );
   if (credentialUri && !placeholder.test(credentialUri[1]) && !localOnly.test(line)) {
     report(scope, path, lineNumber, 'CREDENTIAL_IN_URI');
   }
@@ -82,41 +90,85 @@ const scanLine = (line, scope, path, lineNumber, { genericAssignments = true } =
   if (/\bVITE_[A-Z0-9_]*(?:SECRET|PASSWORD|PRIVATE|DATABASE|SMTP_PASS)\b/.test(line)) {
     report(scope, path, lineNumber, 'SERVER_SECRET_EXPOSED_TO_VITE');
   }
-  if (path !== 'scripts/security-audit.mjs' && /localStorage[^\n]*(?:accessToken|refreshToken)|(?:accessToken|refreshToken)[^\n]*localStorage/i.test(line)) {
+  if (
+    path !== 'scripts/security-audit.mjs' &&
+    /localStorage[^\n]*(?:accessToken|refreshToken)|(?:accessToken|refreshToken)[^\n]*localStorage/i.test(
+      line,
+    )
+  ) {
     report(scope, path, lineNumber, 'AUTH_TOKEN_PERSISTED_IN_WEB_STORAGE');
   }
 };
 
-const paths = runGit(['ls-files', '--cached', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
+const paths = runGit(['ls-files', '--cached', '--others', '--exclude-standard', '-z'])
+  .split('\0')
+  .filter(Boolean);
 for (const path of paths) {
-  if (forbiddenPath.test(path) && !allowedEnvExample.test(path)) report('WORKTREE', path, 0, 'FORBIDDEN_SENSITIVE_FILE');
+  if (forbiddenPath.test(path) && !allowedEnvExample.test(path))
+    report('WORKTREE', path, 0, 'FORBIDDEN_SENSITIVE_FILE');
   if (/(?:^|\/)(?:uploads?|private_uploads|\.private|dist|build|coverage)(?:\/|$)/i.test(path)) {
     report('WORKTREE', path, 0, 'RUNTIME_OR_BUILD_ARTIFACT_TRACKED');
   }
   let buffer;
-  try { buffer = readFileSync(path); } catch { continue; }
+  try {
+    buffer = readFileSync(path);
+  } catch {
+    continue;
+  }
   if (buffer.length > 3 * 1024 * 1024 || buffer.subarray(0, 4096).includes(0)) continue;
   const text = buffer.toString('utf8');
-  text.split(/\r?\n/).forEach((line, index) => scanLine(line, 'WORKTREE', path, index + 1, { genericAssignments: isConfigFile(path) }));
+  text
+    .split(/\r?\n/)
+    .forEach((line, index) =>
+      scanLine(line, 'WORKTREE', path, index + 1, { genericAssignments: isConfigFile(path) }),
+    );
 }
 
 if (includeHistory) {
-  const log = runGit(['log', '--all', '--format=@@COMMIT:%H', '-p', '--full-history', '--no-ext-diff', '--', '.', ':(exclude)*-lock.json']);
+  const log = runGit([
+    'log',
+    '--all',
+    '--format=@@COMMIT:%H',
+    '-p',
+    '--full-history',
+    '--no-ext-diff',
+    '--',
+    '.',
+    ':(exclude)*-lock.json',
+  ]);
   let commit = '';
   let path = '';
   for (const rawLine of log.split(/\r?\n/)) {
-    if (rawLine.startsWith('@@COMMIT:')) { commit = rawLine.slice(9, 21); path = ''; continue; }
-    if (rawLine.startsWith('+++ b/')) { path = rawLine.slice(6); continue; }
+    if (rawLine.startsWith('@@COMMIT:')) {
+      commit = rawLine.slice(9, 21);
+      path = '';
+      continue;
+    }
+    if (rawLine.startsWith('+++ b/')) {
+      path = rawLine.slice(6);
+      continue;
+    }
     if (!path || !rawLine.startsWith('+') || rawLine.startsWith('+++')) continue;
-    scanLine(rawLine.slice(1), `HISTORY:${commit}`, path, 0, { genericAssignments: isConfigFile(path) });
+    scanLine(rawLine.slice(1), `HISTORY:${commit}`, path, 0, {
+      genericAssignments: isConfigFile(path),
+    });
   }
 }
 
-const unique = [...new Map(findings.map((item) => [`${item.scope}|${item.path}|${item.line}|${item.rule}`, item])).values()];
+const unique = [
+  ...new Map(
+    findings.map((item) => [`${item.scope}|${item.path}|${item.line}|${item.rule}`, item]),
+  ).values(),
+];
 if (unique.length) {
-  console.error(`SECURITY AUDIT FAILED (${unique.length} redacted finding${unique.length === 1 ? '' : 's'})`);
-  for (const item of unique) console.error(`${item.scope}\t${item.path}${item.line ? `:${item.line}` : ''}\t${item.rule}`);
+  console.error(
+    `SECURITY AUDIT FAILED (${unique.length} redacted finding${unique.length === 1 ? '' : 's'})`,
+  );
+  for (const item of unique)
+    console.error(`${item.scope}\t${item.path}${item.line ? `:${item.line}` : ''}\t${item.rule}`);
   process.exit(1);
 }
 
-console.log(`SECURITY AUDIT PASSED (${paths.length} source files${includeHistory ? ', Git history checked' : ''})`);
+console.log(
+  `SECURITY AUDIT PASSED (${paths.length} source files${includeHistory ? ', Git history checked' : ''})`,
+);

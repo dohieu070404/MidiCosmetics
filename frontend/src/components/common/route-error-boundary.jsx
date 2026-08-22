@@ -1,16 +1,18 @@
-import { isRouteErrorResponse, Link, useRouteError } from "react-router-dom";
+import { isRouteErrorResponse, Link, useRouteError } from 'react-router-dom';
 
-import { Button } from "@/components/ui/button";
-import { ROUTE_PATHS } from "@/app/router/route-paths";
+import { Button } from '@/components/ui/button';
+import { ROUTE_PATHS } from '@/app/router/route-paths';
 
 export function RouteErrorBoundary() {
   const error = useRouteError();
-  const title = isRouteErrorResponse(error) ? `${error.status} ${error.statusText}` : "Đã có lỗi xảy ra";
+  const title = isRouteErrorResponse(error)
+    ? `${error.status} ${error.statusText}`
+    : 'Đã có lỗi xảy ra';
   const message = isRouteErrorResponse(error)
-    ? error.data?.message || "Không thể tải trang này."
+    ? error.data?.message || 'Không thể tải trang này.'
     : error instanceof Error
       ? error.message
-      : "Ứng dụng gặp lỗi ngoài dự kiến.";
+      : 'Ứng dụng gặp lỗi ngoài dự kiến.';
 
   return (
     <main className="grid min-h-dvh place-items-center bg-background px-6 py-24 text-center">

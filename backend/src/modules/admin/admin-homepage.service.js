@@ -21,10 +21,42 @@ const LEGACY_HERO_SUBTITLES = new Set([
   'Midi Cosmetics tuyển chọn sản phẩm làm đẹp thanh lịch, dễ dùng mỗi ngày.',
 ]);
 const DEFAULT_HERO_SLIDES = Object.freeze([
-  Object.freeze({ id: 'skincare', kicker: 'Nghi thức phục hồi · 01', title: 'Chăm sóc da', subtitle: 'Công thức tinh giản cho làn da khỏe và ổn định mỗi ngày.', imageUrl: '/images/editorial/hero-skincare-2026.webp', href: '/products?group=skincare', mobilePosition: '68% center' }),
-  Object.freeze({ id: 'makeup', kicker: 'Sắc độ mới · 02', title: 'Trang điểm', subtitle: 'Màu sắc tôn làn da châu Á, tự nhiên từ sáng đến tối.', imageUrl: '/images/editorial/hero-makeup-2026.webp', href: '/products?group=makeup', mobilePosition: '65% center' }),
-  Object.freeze({ id: 'body-hair', kicker: 'Chăm sóc toàn thân · 03', title: 'Cơ thể & tóc', subtitle: 'Những nghi thức dịu nhẹ cho cơ thể, da đầu và mái tóc.', imageUrl: '/images/editorial/hero-body-hair-2026.webp', href: '/products?group=body-hair', mobilePosition: '69% center' }),
-  Object.freeze({ id: 'fragrance', kicker: 'Dấu ấn hương thơm · 04', title: 'Nước hoa', subtitle: 'Tìm tầng hương khiến bạn nhận ra chính mình.', imageUrl: '/images/editorial/editorial-perfume-2026.webp', href: '/products?group=fragrance', mobilePosition: '39% center' }),
+  Object.freeze({
+    id: 'skincare',
+    kicker: 'Nghi thức phục hồi · 01',
+    title: 'Chăm sóc da',
+    subtitle: 'Công thức tinh giản cho làn da khỏe và ổn định mỗi ngày.',
+    imageUrl: '/images/editorial/hero-skincare-2026.webp',
+    href: '/products?group=skincare',
+    mobilePosition: '68% center',
+  }),
+  Object.freeze({
+    id: 'makeup',
+    kicker: 'Sắc độ mới · 02',
+    title: 'Trang điểm',
+    subtitle: 'Màu sắc tôn làn da châu Á, tự nhiên từ sáng đến tối.',
+    imageUrl: '/images/editorial/hero-makeup-2026.webp',
+    href: '/products?group=makeup',
+    mobilePosition: '65% center',
+  }),
+  Object.freeze({
+    id: 'body-hair',
+    kicker: 'Chăm sóc toàn thân · 03',
+    title: 'Cơ thể & tóc',
+    subtitle: 'Những nghi thức dịu nhẹ cho cơ thể, da đầu và mái tóc.',
+    imageUrl: '/images/editorial/hero-body-hair-2026.webp',
+    href: '/products?group=body-hair',
+    mobilePosition: '69% center',
+  }),
+  Object.freeze({
+    id: 'fragrance',
+    kicker: 'Dấu ấn hương thơm · 04',
+    title: 'Nước hoa',
+    subtitle: 'Tìm tầng hương khiến bạn nhận ra chính mình.',
+    imageUrl: '/images/editorial/editorial-perfume-2026.webp',
+    href: '/products?group=fragrance',
+    mobilePosition: '39% center',
+  }),
 ]);
 const DEFAULT_SECTIONS = Object.freeze([
   {
@@ -48,7 +80,8 @@ const DEFAULT_SECTIONS = Object.freeze([
     id: 'brand-intro',
     type: 'BRAND_INTRO',
     title: 'Không cần quá nhiều. Chỉ cần đúng với làn da.',
-    subtitle: 'Chúng tôi chọn từng công thức dựa trên hiệu quả, cảm giác sử dụng và sự phù hợp với khí hậu Việt Nam—để mỗi bước chăm sóc đều đáng giá.',
+    subtitle:
+      'Chúng tôi chọn từng công thức dựa trên hiệu quả, cảm giác sử dụng và sự phù hợp với khí hậu Việt Nam—để mỗi bước chăm sóc đều đáng giá.',
     isEnabled: false,
     sortOrder: 900,
     config: {
@@ -72,7 +105,8 @@ const DEFAULT_SECTIONS = Object.freeze([
     id: 'custom-text',
     type: 'CUSTOM_TEXT',
     title: 'Hương thơm là cách ký ức ở lại.',
-    subtitle: 'Từ hương sạch ban ngày đến những tầng hổ phách sâu hơn khi đêm xuống—hãy chọn mùi hương khiến bạn nhận ra chính mình.',
+    subtitle:
+      'Từ hương sạch ban ngày đến những tầng hổ phách sâu hơn khi đêm xuống—hãy chọn mùi hương khiến bạn nhận ra chính mình.',
     isEnabled: true,
     sortOrder: 30,
     config: {
@@ -87,7 +121,8 @@ const DEFAULT_SECTIONS = Object.freeze([
     id: 'skincare-editorial',
     type: 'CUSTOM_TEXT',
     title: 'Làn da đẹp bắt đầu từ một nhịp chăm sóc vừa đủ.',
-    subtitle: 'Từ làm sạch dịu nhẹ đến phục hồi hàng rào bảo vệ—hãy xây một chu trình phù hợp với làn da và khí hậu Việt Nam.',
+    subtitle:
+      'Từ làm sạch dịu nhẹ đến phục hồi hàng rào bảo vệ—hãy xây một chu trình phù hợp với làn da và khí hậu Việt Nam.',
     isEnabled: true,
     sortOrder: 40,
     config: {
@@ -118,26 +153,38 @@ const DEFAULT_SECTIONS = Object.freeze([
   },
 ]);
 
-const safeText = (value, max = 500) => normalizePlainText(value ?? '', max).replace(/[<>]/g, '').trim();
+const safeText = (value, max = 500) =>
+  normalizePlainText(value ?? '', max)
+    .replace(/[<>]/g, '')
+    .trim();
 
 const safeHref = (value, fallback = '') => {
   const text = String(value ?? '').trim();
   if (!text) return fallback;
-  if (/^\/(?:products|blog|about)(?:\/[-a-zA-Z0-9_/?=&]*|\?[-a-zA-Z0-9_=&-]+)?$/.test(text)) return text;
+  if (/^\/(?:products|blog|about)(?:\/[-a-zA-Z0-9_/?=&]*|\?[-a-zA-Z0-9_=&-]+)?$/.test(text))
+    return text;
   return fallback;
 };
 
 const safeImageUrl = (value) => {
   const text = String(value ?? '').trim();
   if (!text) return '';
-  if (/^\/(?:uploads|images|brand)\/[a-zA-Z0-9._/-]+$/.test(text) && !text.includes('..') && !text.includes('//')) return text;
+  if (
+    /^\/(?:uploads|images|brand)\/[a-zA-Z0-9._/-]+$/.test(text) &&
+    !text.includes('..') &&
+    !text.includes('//')
+  )
+    return text;
   const validation = validateRemoteImageUrl(text);
   return validation.ok ? validation.url : '';
 };
 
 const safeMobilePosition = (value, fallback = 'center center') => {
-  const text = String(value ?? '').trim().toLowerCase();
-  if (/^(?:(?:left|center|right|\d{1,3}%)(?:\s+(?:top|center|bottom|\d{1,3}%))?)$/.test(text)) return text;
+  const text = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  if (/^(?:(?:left|center|right|\d{1,3}%)(?:\s+(?:top|center|bottom|\d{1,3}%))?)$/.test(text))
+    return text;
   return fallback;
 };
 
@@ -176,23 +223,27 @@ const sanitizeConfig = (type, config = {}) => {
       slides: sanitizeHeroSlides(source.slides),
     };
   }
-  if (type === 'FEATURED_PRODUCTS') return { eyebrow: safeText(source.eyebrow, 80), limit: safeLimit(source.limit, 8) };
-  if (type === 'FEATURED_POSTS') return { eyebrow: safeText(source.eyebrow, 80), limit: safeLimit(source.limit, 3) };
+  if (type === 'FEATURED_PRODUCTS')
+    return { eyebrow: safeText(source.eyebrow, 80), limit: safeLimit(source.limit, 8) };
+  if (type === 'FEATURED_POSTS')
+    return { eyebrow: safeText(source.eyebrow, 80), limit: safeLimit(source.limit, 3) };
   if (type === 'FEATURED_CATEGORIES') return { limit: safeLimit(source.limit, 8) };
-  if (type === 'BRAND_INTRO') return {
-    eyebrow: safeText(source.eyebrow, 80),
-    body: safeText(source.body, 1500),
-    imageUrl: safeImageUrl(source.imageUrl),
-    ctaLabel: safeText(source.ctaLabel, 60) || 'Tìm sản phẩm dành cho bạn',
-    ctaHref: safeHref(source.ctaHref, '/products'),
-  };
-  if (type === 'CUSTOM_TEXT') return {
-    eyebrow: safeText(source.eyebrow, 80),
-    body: safeText(source.body, 2000),
-    imageUrl: safeImageUrl(source.imageUrl),
-    ctaLabel: safeText(source.ctaLabel, 60) || 'Khám phá nước hoa',
-    ctaHref: safeHref(source.ctaHref, '/products?group=fragrance'),
-  };
+  if (type === 'BRAND_INTRO')
+    return {
+      eyebrow: safeText(source.eyebrow, 80),
+      body: safeText(source.body, 1500),
+      imageUrl: safeImageUrl(source.imageUrl),
+      ctaLabel: safeText(source.ctaLabel, 60) || 'Tìm sản phẩm dành cho bạn',
+      ctaHref: safeHref(source.ctaHref, '/products'),
+    };
+  if (type === 'CUSTOM_TEXT')
+    return {
+      eyebrow: safeText(source.eyebrow, 80),
+      body: safeText(source.body, 2000),
+      imageUrl: safeImageUrl(source.imageUrl),
+      ctaLabel: safeText(source.ctaLabel, 60) || 'Khám phá nước hoa',
+      ctaHref: safeHref(source.ctaHref, '/products?group=fragrance'),
+    };
   return {};
 };
 
@@ -206,9 +257,19 @@ const normalizeSection = (section, fallback = null, index = 0) => {
     id: String(section?.id || base.id || type.toLowerCase()).trim(),
     type,
     title: safeText(section?.title ?? base.title, 180),
-    subtitle: type === 'HERO' && LEGACY_HERO_SUBTITLES.has(normalizedSubtitle) ? DEFAULT_HERO_SUBTITLE : normalizedSubtitle,
-    isEnabled: type === 'HERO' ? true : typeof section?.isEnabled === 'boolean' ? section.isEnabled : Boolean(base.isEnabled),
-    sortOrder: Number.isSafeInteger(Number(section?.sortOrder)) ? Math.max(0, Number(section.sortOrder)) : Number(base.sortOrder || index * 10),
+    subtitle:
+      type === 'HERO' && LEGACY_HERO_SUBTITLES.has(normalizedSubtitle)
+        ? DEFAULT_HERO_SUBTITLE
+        : normalizedSubtitle,
+    isEnabled:
+      type === 'HERO'
+        ? true
+        : typeof section?.isEnabled === 'boolean'
+          ? section.isEnabled
+          : Boolean(base.isEnabled),
+    sortOrder: Number.isSafeInteger(Number(section?.sortOrder))
+      ? Math.max(0, Number(section.sortOrder))
+      : Number(base.sortOrder || index * 10),
     config: sanitizeConfig(type, { ...(base.config || {}), ...(section?.config || {}) }),
   };
 };
@@ -216,12 +277,19 @@ const normalizeSection = (section, fallback = null, index = 0) => {
 const normalizeSections = (sections) => {
   const source = Array.isArray(sections) ? sections : [];
   const byId = new Map(source.map((section) => [section?.id, section]));
-  const normalized = DEFAULT_SECTIONS.map((fallback, index) => normalizeSection({ ...fallback, ...(byId.get(fallback.id) || {}) }, fallback, index));
+  const normalized = DEFAULT_SECTIONS.map((fallback, index) =>
+    normalizeSection({ ...fallback, ...(byId.get(fallback.id) || {}) }, fallback, index),
+  );
   const defaultIds = new Set(DEFAULT_SECTIONS.map((section) => section.id));
   const preservedLegacySections = source
-    .filter((section) => section?.id && !defaultIds.has(section.id) && HOMEPAGE_SECTION_TYPES.has(section.type))
+    .filter(
+      (section) =>
+        section?.id && !defaultIds.has(section.id) && HOMEPAGE_SECTION_TYPES.has(section.type),
+    )
     .map((section, index) => normalizeSection(section, section, DEFAULT_SECTIONS.length + index));
-  return [...normalized, ...preservedLegacySections].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+  return [...normalized, ...preservedLegacySections].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id),
+  );
 };
 
 const loadSections = async () => {
@@ -234,16 +302,47 @@ const saveSections = async (sections) => {
   const normalized = normalizeSections(sections);
   const current = await prisma.siteSetting.findUnique({ where: { key: HOMEPAGE_SETTING_KEY } });
   const writes = [];
-  if (current) writes.push(prisma.siteSetting.upsert({
-    where: { key: HOMEPAGE_BACKUP_SETTING_KEY },
-    update: { value: { savedAt: new Date().toISOString(), sections: current.value }, type: 'JSON', group: HOMEPAGE_SETTING_GROUP, isPublic: false, description: 'Automatic backup before the latest homepage update' },
-    create: { key: HOMEPAGE_BACKUP_SETTING_KEY, value: { savedAt: new Date().toISOString(), sections: current.value }, type: 'JSON', group: HOMEPAGE_SETTING_GROUP, isPublic: false, description: 'Automatic backup before the latest homepage update' },
-  }));
-  writes.push(prisma.siteSetting.upsert({
-    where: { key: HOMEPAGE_SETTING_KEY },
-    update: { value: normalized, type: 'JSON', group: HOMEPAGE_SETTING_GROUP, isPublic: true, description: 'Homepage section configuration' },
-    create: { key: HOMEPAGE_SETTING_KEY, value: normalized, type: 'JSON', group: HOMEPAGE_SETTING_GROUP, isPublic: true, description: 'Homepage section configuration' },
-  }));
+  if (current)
+    writes.push(
+      prisma.siteSetting.upsert({
+        where: { key: HOMEPAGE_BACKUP_SETTING_KEY },
+        update: {
+          value: { savedAt: new Date().toISOString(), sections: current.value },
+          type: 'JSON',
+          group: HOMEPAGE_SETTING_GROUP,
+          isPublic: false,
+          description: 'Automatic backup before the latest homepage update',
+        },
+        create: {
+          key: HOMEPAGE_BACKUP_SETTING_KEY,
+          value: { savedAt: new Date().toISOString(), sections: current.value },
+          type: 'JSON',
+          group: HOMEPAGE_SETTING_GROUP,
+          isPublic: false,
+          description: 'Automatic backup before the latest homepage update',
+        },
+      }),
+    );
+  writes.push(
+    prisma.siteSetting.upsert({
+      where: { key: HOMEPAGE_SETTING_KEY },
+      update: {
+        value: normalized,
+        type: 'JSON',
+        group: HOMEPAGE_SETTING_GROUP,
+        isPublic: true,
+        description: 'Homepage section configuration',
+      },
+      create: {
+        key: HOMEPAGE_SETTING_KEY,
+        value: normalized,
+        type: 'JSON',
+        group: HOMEPAGE_SETTING_GROUP,
+        isPublic: true,
+        description: 'Homepage section configuration',
+      },
+    }),
+  );
   await prisma.$transaction(writes);
   return normalized;
 };
@@ -257,7 +356,10 @@ const getSectionOrThrow = (sections, sectionId) => {
 const productInclude = {
   category: { select: { uuid: true, name: true, slug: true } },
   brand: { select: { uuid: true, name: true, slug: true } },
-  images: { orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }], include: { mediaAsset: { select: { uuid: true, secureUrl: true, altText: true } } } },
+  images: {
+    orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    include: { mediaAsset: { select: { uuid: true, secureUrl: true, altText: true } } },
+  },
 };
 
 const postInclude = {
@@ -273,8 +375,13 @@ export const adminHomepageService = {
   async updateSection(sectionId, body) {
     const sections = await loadSections();
     const current = getSectionOrThrow(sections, sectionId);
-    const next = normalizeSection({ ...current, ...body, id: current.id, type: current.type }, current);
-    const saved = await saveSections(sections.map((section) => (section.id === sectionId ? next : section)));
+    const next = normalizeSection(
+      { ...current, ...body, id: current.id, type: current.type },
+      current,
+    );
+    const saved = await saveSections(
+      sections.map((section) => (section.id === sectionId ? next : section)),
+    );
     return getSectionOrThrow(saved, sectionId);
   },
 
@@ -282,32 +389,57 @@ export const adminHomepageService = {
     const sections = await loadSections();
     const current = getSectionOrThrow(sections, sectionId);
     const nextEnabled = typeof body.isEnabled === 'boolean' ? body.isEnabled : !current.isEnabled;
-    const saved = await saveSections(sections.map((section) => (section.id === sectionId ? { ...section, isEnabled: nextEnabled } : section)));
+    const saved = await saveSections(
+      sections.map((section) =>
+        section.id === sectionId ? { ...section, isEnabled: nextEnabled } : section,
+      ),
+    );
     return getSectionOrThrow(saved, sectionId);
   },
 
   async reorderSections(body) {
     const sections = await loadSections();
     const orderMap = new Map((body.sections || []).map((item) => [item.id, item.sortOrder]));
-    const saved = await saveSections(sections.map((section) => ({ ...section, sortOrder: orderMap.has(section.id) ? Number(orderMap.get(section.id)) : section.sortOrder })));
+    const saved = await saveSections(
+      sections.map((section) => ({
+        ...section,
+        sortOrder: orderMap.has(section.id) ? Number(orderMap.get(section.id)) : section.sortOrder,
+      })),
+    );
     return saved;
   },
 
   async addFeaturedItem(sectionId, body) {
     const sections = await loadSections();
     const section = getSectionOrThrow(sections, sectionId);
-    const order = Number.isSafeInteger(Number(body.sortOrder)) ? Math.max(0, Number(body.sortOrder)) : 0;
+    const order = Number.isSafeInteger(Number(body.sortOrder))
+      ? Math.max(0, Number(body.sortOrder))
+      : 0;
 
     if (section.type === 'FEATURED_PRODUCTS' && body.entityType === 'PRODUCT') {
-      const product = await prisma.product.findFirst({ where: { uuid: body.entityUuid, deletedAt: null }, include: productInclude });
+      const product = await prisma.product.findFirst({
+        where: { uuid: body.entityUuid, deletedAt: null },
+        include: productInclude,
+      });
       if (!product) throw ApiError.notFound('Product not found');
-      return prisma.product.update({ where: { id: product.id }, data: { isFeatured: true, featuredOrder: order }, include: productInclude });
+      return prisma.product.update({
+        where: { id: product.id },
+        data: { isFeatured: true, featuredOrder: order },
+        include: productInclude,
+      });
     }
 
     if (section.type === 'FEATURED_POSTS' && body.entityType === 'POST') {
-      const post = await prisma.blogPost.findFirst({ where: { uuid: body.entityUuid, deletedAt: null }, include: postInclude });
+      const post = await prisma.blogPost.findFirst({
+        where: { uuid: body.entityUuid, deletedAt: null },
+        include: postInclude,
+      });
       if (!post) throw ApiError.notFound('Blog post not found');
-      return prisma.blogPost.update({ where: { id: post.id }, data: { isFeatured: true, featuredOrder: order }, include: postInclude });
+      return prisma.blogPost.update({
+        where: { id: post.id },
+        data: { isFeatured: true, featuredOrder: order },
+        include: postInclude,
+      });
     }
 
     throw ApiError.badRequest('Section does not support this featured item type');
@@ -318,15 +450,29 @@ export const adminHomepageService = {
     const section = getSectionOrThrow(sections, sectionId);
 
     if (section.type === 'FEATURED_PRODUCTS') {
-      const product = await prisma.product.findFirst({ where: { uuid: itemId, deletedAt: null }, include: productInclude });
+      const product = await prisma.product.findFirst({
+        where: { uuid: itemId, deletedAt: null },
+        include: productInclude,
+      });
       if (!product) throw ApiError.notFound('Product not found');
-      return prisma.product.update({ where: { id: product.id }, data: { isFeatured: false }, include: productInclude });
+      return prisma.product.update({
+        where: { id: product.id },
+        data: { isFeatured: false },
+        include: productInclude,
+      });
     }
 
     if (section.type === 'FEATURED_POSTS') {
-      const post = await prisma.blogPost.findFirst({ where: { uuid: itemId, deletedAt: null }, include: postInclude });
+      const post = await prisma.blogPost.findFirst({
+        where: { uuid: itemId, deletedAt: null },
+        include: postInclude,
+      });
       if (!post) throw ApiError.notFound('Blog post not found');
-      return prisma.blogPost.update({ where: { id: post.id }, data: { isFeatured: false }, include: postInclude });
+      return prisma.blogPost.update({
+        where: { id: post.id },
+        data: { isFeatured: false },
+        include: postInclude,
+      });
     }
 
     throw ApiError.badRequest('Section does not support featured items');
@@ -338,11 +484,25 @@ export const adminHomepageService = {
     const items = body.items || [];
 
     if (section.type === 'FEATURED_PRODUCTS') {
-      await prisma.$transaction(items.map((item) => prisma.product.updateMany({ where: { uuid: item.entityUuid, deletedAt: null }, data: { featuredOrder: Number(item.sortOrder) } })));
+      await prisma.$transaction(
+        items.map((item) =>
+          prisma.product.updateMany({
+            where: { uuid: item.entityUuid, deletedAt: null },
+            data: { featuredOrder: Number(item.sortOrder) },
+          }),
+        ),
+      );
       return true;
     }
     if (section.type === 'FEATURED_POSTS') {
-      await prisma.$transaction(items.map((item) => prisma.blogPost.updateMany({ where: { uuid: item.entityUuid, deletedAt: null }, data: { featuredOrder: Number(item.sortOrder) } })));
+      await prisma.$transaction(
+        items.map((item) =>
+          prisma.blogPost.updateMany({
+            where: { uuid: item.entityUuid, deletedAt: null },
+            data: { featuredOrder: Number(item.sortOrder) },
+          }),
+        ),
+      );
       return true;
     }
     throw ApiError.badRequest('Section does not support item reorder');

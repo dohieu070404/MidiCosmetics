@@ -10,7 +10,9 @@ const loadRecaptcha = () => {
     const script = existing || document.createElement('script');
     const ready = () => globalThis.grecaptcha?.ready(() => resolve(globalThis.grecaptcha));
     script.addEventListener('load', ready, { once: true });
-    script.addEventListener('error', () => reject(new Error('Không tải được Google reCAPTCHA.')), { once: true });
+    script.addEventListener('error', () => reject(new Error('Không tải được Google reCAPTCHA.')), {
+      once: true,
+    });
     if (!existing) {
       script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
       script.async = true;
@@ -30,16 +32,23 @@ export function GoogleRecaptcha({ siteKey, onChange, resetNonce = 0 }) {
   useEffect(() => {
     let cancelled = false;
     if (!siteKey) return undefined;
-    loadRecaptcha().then((api) => {
-      if (cancelled || !containerRef.current || widgetRef.current !== null) return;
-      widgetRef.current = api.render(containerRef.current, {
-        sitekey: siteKey,
-        callback: (token) => onChange?.(token),
-        'expired-callback': () => onChange?.(''),
-        'error-callback': () => { setError('Google reCAPTCHA đang gián đoạn. Vui lòng thử lại.'); onChange?.(''); },
-      });
-    }).catch((err) => setError(err.message));
-    return () => { cancelled = true; };
+    loadRecaptcha()
+      .then((api) => {
+        if (cancelled || !containerRef.current || widgetRef.current !== null) return;
+        widgetRef.current = api.render(containerRef.current, {
+          sitekey: siteKey,
+          callback: (token) => onChange?.(token),
+          'expired-callback': () => onChange?.(''),
+          'error-callback': () => {
+            setError('Google reCAPTCHA đang gián đoạn. Vui lòng thử lại.');
+            onChange?.('');
+          },
+        });
+      })
+      .catch((err) => setError(err.message));
+    return () => {
+      cancelled = true;
+    };
   }, [onChange, siteKey]);
 
   useEffect(() => {
@@ -49,5 +58,10 @@ export function GoogleRecaptcha({ siteKey, onChange, resetNonce = 0 }) {
     }
   }, [onChange, resetNonce]);
 
-  return <div className="grid gap-2"><div ref={containerRef} className="min-h-[78px] max-w-full overflow-x-auto" />{error ? <p className="text-sm text-destructive">{error}</p> : null}</div>;
+  return (
+    <div className="grid gap-2">
+      <div ref={containerRef} className="min-h-[78px] max-w-full overflow-x-auto" />
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+    </div>
+  );
 }

@@ -3,10 +3,16 @@ import { env } from '../../config/env.js';
 import { prisma } from '../../prisma/client.js';
 import { ApiError } from '../../errors/api-error.js';
 import { hashPassword } from '../../utils/password.js';
-import { isStrongAdminPassword, ADMIN_PASSWORD_POLICY_MESSAGE } from '../../utils/admin-password-policy.js';
+import {
+  isStrongAdminPassword,
+  ADMIN_PASSWORD_POLICY_MESSAGE,
+} from '../../utils/admin-password-policy.js';
 import { USER_ROLES } from '../../constants/roles.js';
 
-const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+const normalizeEmail = (email) =>
+  String(email || '')
+    .trim()
+    .toLowerCase();
 
 const timingSafeEqualString = (actual, expected) => {
   const actualBuffer = Buffer.from(String(actual || ''), 'utf8');

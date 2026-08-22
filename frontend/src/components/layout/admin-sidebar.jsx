@@ -26,19 +26,41 @@ export function AdminSidebar() {
 
   return (
     <aside className="sticky top-0 hidden h-dvh overflow-y-auto border-r border-white/10 bg-[#241f1d] px-5 py-7 text-[#f7f0e7] lg:block">
-      <div className="[&_a]:text-[#f7f0e7] [&_span]:text-[#bda89d]"><BrandLogo /></div>
+      <div className="[&_a]:text-[#f7f0e7] [&_span]:text-[#bda89d]">
+        <BrandLogo />
+      </div>
       <p className="mt-3 text-[10px] uppercase tracking-[0.24em] text-[#aa958b]">Studio quản trị</p>
       <nav className="mt-8 grid gap-7" aria-label="Điều hướng quản trị">
-        {groupedNavigation.map((group) => <div key={group.label}>
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8f7d75]">{group.label}</p>
-          <div className="grid gap-0.5">{group.items.map((item) => (
-            <NavLink key={item.href} to={item.href} end={item.href === ROUTE_PATHS.adminDashboard} className={({ isActive }) => cn('border-l border-transparent px-3 py-2 text-sm text-[#d6c7c0] transition duration-200 hover:border-[#d7aa9b] hover:bg-white/5 hover:text-white', isActive && 'border-[#d7aa9b] bg-white/8 text-white')}>
-              {item.label}
-            </NavLink>
-          ))}</div>
-        </div>)}
+        {groupedNavigation.map((group) => (
+          <div key={group.label}>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8f7d75]">
+              {group.label}
+            </p>
+            <div className="grid gap-0.5">
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  to={item.href}
+                  end={item.href === ROUTE_PATHS.adminDashboard}
+                  className={({ isActive }) =>
+                    cn(
+                      'border-l border-transparent px-3 py-2 text-sm text-[#d6c7c0] transition duration-200 hover:border-[#d7aa9b] hover:bg-white/5 hover:text-white',
+                      isActive && 'border-[#d7aa9b] bg-white/8 text-white',
+                    )
+                  }
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ))}
       </nav>
-      <button type="button" onClick={logout} className="mt-8 w-full border border-white/15 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#d6c7c0] transition hover:bg-white/8 hover:text-white">
+      <button
+        type="button"
+        onClick={logout}
+        className="mt-8 w-full border border-white/15 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#d6c7c0] transition hover:bg-white/8 hover:text-white"
+      >
         Đăng xuất
       </button>
     </aside>

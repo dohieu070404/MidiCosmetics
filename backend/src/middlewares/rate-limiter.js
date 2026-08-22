@@ -33,7 +33,6 @@ export const authRateLimiter = rateLimit({
   handler: buildHandler('Too many authentication attempts. Please try again later.'),
 });
 
-
 export const uploadRateLimiter = rateLimit({
   windowMs: env.rateLimit.windowMs,
   max: Math.max(10, Math.floor(env.rateLimit.authMax * 2)),

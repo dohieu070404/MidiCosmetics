@@ -38,25 +38,27 @@ export const createApp = () => {
         if (res.statusCode >= 400) return 'warn';
         return 'info';
       },
-      ...(env.isProduction ? {
-        serializers: {
-          err(error) {
-            return {
-              type: error?.name || 'Error',
-              statusCode: error?.statusCode || undefined,
-              message: '[REDACTED_IN_PRODUCTION]',
-            };
-          },
-        },
-      } : {}),
+      ...(env.isProduction
+        ? {
+            serializers: {
+              err(error) {
+                return {
+                  type: error?.name || 'Error',
+                  statusCode: error?.statusCode || undefined,
+                  message: '[REDACTED_IN_PRODUCTION]',
+                };
+              },
+            },
+          }
+        : {}),
       customProps: (req) => ({ requestId: req.id }),
-    })
+    }),
   );
 
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
-    })
+    }),
   );
   app.use(cors(corsOptions));
   app.options('*', cors(corsOptions));
@@ -71,16 +73,19 @@ export const createApp = () => {
     }
     return next();
   });
-  app.use('/uploads', express.static(getUploadDir(), {
-    dotfiles: 'deny',
-    index: false,
-    immutable: true,
-    maxAge: '1d',
-    setHeaders(res) {
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Content-Disposition', 'inline');
-    },
-  }));
+  app.use(
+    '/uploads',
+    express.static(getUploadDir(), {
+      dotfiles: 'deny',
+      index: false,
+      immutable: true,
+      maxAge: '1d',
+      setHeaders(res) {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Disposition', 'inline');
+      },
+    }),
+  );
   app.use(`${env.apiPrefix}/auth`, (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');
@@ -98,11 +103,13 @@ export const createApp = () => {
   app.get('/', (req, res) =>
     res.success({
       message: 'API is running',
-      data: env.isProduction ? { status: 'ok' } : {
-        service: env.appName,
-        apiPrefix: env.apiPrefix,
-      },
-    })
+      data: env.isProduction
+        ? { status: 'ok' }
+        : {
+            service: env.appName,
+            apiPrefix: env.apiPrefix,
+          },
+    }),
   );
 
   app.use(routes);

@@ -1,9 +1,10 @@
-const escapeHtml = (value = '') => String(value)
-  .replaceAll('&', '&amp;')
-  .replaceAll('<', '&lt;')
-  .replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;')
-  .replaceAll("'", '&#39;');
+const escapeHtml = (value = '') =>
+  String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 
 export const EMAIL_TEMPLATE_TYPES = Object.freeze({
   ADMIN_PASSWORD_CHANGE_VERIFY: 'ADMIN_PASSWORD_CHANGE_VERIFY',
@@ -20,9 +21,12 @@ export const EMAIL_TEMPLATE_TYPES = Object.freeze({
 });
 
 const SUBJECTS = Object.freeze({
-  [EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGE_VERIFY]: '[Midi Cosmetics] Xác minh đổi mật khẩu quản trị',
-  [EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGED]: '[Midi Cosmetics] Mật khẩu quản trị đã được thay đổi',
-  [EMAIL_TEMPLATE_TYPES.NOTIFICATION_EMAIL_VERIFY]: '[Midi Cosmetics] Xác minh email nhận thông báo',
+  [EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGE_VERIFY]:
+    '[Midi Cosmetics] Xác minh đổi mật khẩu quản trị',
+  [EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGED]:
+    '[Midi Cosmetics] Mật khẩu quản trị đã được thay đổi',
+  [EMAIL_TEMPLATE_TYPES.NOTIFICATION_EMAIL_VERIFY]:
+    '[Midi Cosmetics] Xác minh email nhận thông báo',
   [EMAIL_TEMPLATE_TYPES.NOTIFICATION_EMAIL_TEST]: '[Midi Cosmetics] Email test thông báo hệ thống',
   [EMAIL_TEMPLATE_TYPES.PRODUCT_CREATED]: '[Midi Cosmetics] Sản phẩm vừa được thêm',
   [EMAIL_TEMPLATE_TYPES.PRODUCT_UPDATED]: '[Midi Cosmetics] Sản phẩm vừa được chỉnh sửa',
@@ -33,27 +37,34 @@ const SUBJECTS = Object.freeze({
   [EMAIL_TEMPLATE_TYPES.ADMIN_BOOTSTRAPPED]: '[Midi Cosmetics] Admin đầu tiên vừa được tạo',
 });
 
-export const formatEmailDateTime = (value = new Date()) => new Intl.DateTimeFormat('vi-VN', {
-  timeZone: 'Asia/Ho_Chi_Minh',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-}).format(value instanceof Date ? value : new Date(value));
+export const formatEmailDateTime = (value = new Date()) =>
+  new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(value instanceof Date ? value : new Date(value));
 
-const normalizeRows = (rows = []) => rows
-  .filter(Boolean)
-  .filter((row) => row.value !== undefined && row.value !== null && row.value !== '')
-  .map((row) => ({ label: String(row.label || ''), value: String(row.value ?? '') }));
+const normalizeRows = (rows = []) =>
+  rows
+    .filter(Boolean)
+    .filter((row) => row.value !== undefined && row.value !== null && row.value !== '')
+    .map((row) => ({ label: String(row.label || ''), value: String(row.value ?? '') }));
 
-const renderRowsHtml = (rows) => rows.map((row) => `
+const renderRowsHtml = (rows) =>
+  rows
+    .map(
+      (row) => `
   <tr>
     <td style="padding:8px 12px;border:1px solid #eee;background:#faf7f2;font-weight:600;vertical-align:top;width:180px;">${escapeHtml(row.label)}</td>
     <td style="padding:8px 12px;border:1px solid #eee;">${escapeHtml(row.value)}</td>
   </tr>
-`).join('');
+`,
+    )
+    .join('');
 
 const renderRowsText = (rows) => rows.map((row) => `${row.label}: ${row.value}`).join('\n');
 

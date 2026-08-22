@@ -20,5 +20,6 @@ export const validateLocalImageFiles = (files, label = 'Ảnh') => {
 
 export const applyImageFallback = (event) => {
   if (!event?.currentTarget) return;
-  if (event.currentTarget.src !== PLACEHOLDER_IMAGE_URL) event.currentTarget.src = PLACEHOLDER_IMAGE_URL;
+  if (event.currentTarget.src !== PLACEHOLDER_IMAGE_URL)
+    event.currentTarget.src = PLACEHOLDER_IMAGE_URL;
 };

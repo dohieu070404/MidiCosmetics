@@ -1,1 +1,1 @@
-export { cn } from "@/lib/utils/cn";
+export { cn } from '@/lib/utils/cn';

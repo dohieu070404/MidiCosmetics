@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/coverage
+**/.vite
+backend/prisma/migrations
+backend/prisma/migrations_mysql_backup
+backend/templates
+frontend/public
+*.zip

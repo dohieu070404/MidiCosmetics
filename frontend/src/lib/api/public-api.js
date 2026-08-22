@@ -2,7 +2,13 @@ import { apiClient } from '@/lib/http/api-client';
 import { env } from '@/config/env';
 import { PLACEHOLDER_IMAGE_URL } from '@/lib/media';
 
-const q = (params = {}) => ({ params: Object.fromEntries(Object.entries(params).filter(([, value]) => value !== '' && value !== undefined && value !== null)) });
+const q = (params = {}) => ({
+  params: Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== '' && value !== undefined && value !== null,
+    ),
+  ),
+});
 
 export const publicApi = {
   home: () => apiClient.get('/home'),
@@ -29,7 +35,8 @@ export const mediaUrl = (url) => {
   // Files under /images and /brand are bundled with the frontend and must stay
   // on the frontend origin. Only legacy /uploads paths belong to the API.
   if (url.startsWith('/images/') || url.startsWith('/brand/')) return url;
-  if (url.startsWith('/uploads/') && !env.API_BASE_URL.startsWith('/')) return `${env.API_ORIGIN}${url}`;
+  if (url.startsWith('/uploads/') && !env.API_BASE_URL.startsWith('/'))
+    return `${env.API_ORIGIN}${url}`;
   return url;
 };
 
@@ -37,22 +44,27 @@ const normalizeMoney = (value) => {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
 
-  let raw = typeof value === 'object' && typeof value.toString === 'function' ? value.toString() : String(value);
+  let raw =
+    typeof value === 'object' && typeof value.toString === 'function'
+      ? value.toString()
+      : String(value);
   let normalized = raw.trim().replace(/\s/g, '');
   if (!normalized || normalized.toLowerCase() === 'nan') return null;
 
   const lastComma = normalized.lastIndexOf(',');
   const lastDot = normalized.lastIndexOf('.');
   if (lastComma !== -1 && lastDot !== -1) {
-    normalized = lastComma > lastDot
-      ? normalized.replace(/\./g, '').replace(',', '.')
-      : normalized.replace(/,/g, '');
+    normalized =
+      lastComma > lastDot
+        ? normalized.replace(/\./g, '').replace(',', '.')
+        : normalized.replace(/,/g, '');
   } else if (lastComma !== -1) {
     const parts = normalized.split(',');
     const last = parts.at(-1) || '';
-    normalized = parts.length > 1 && last.length > 0 && last.length <= 2
-      ? `${parts.slice(0, -1).join('')}.${last}`
-      : normalized.replace(/,/g, '');
+    normalized =
+      parts.length > 1 && last.length > 0 && last.length <= 2
+        ? `${parts.slice(0, -1).join('')}.${last}`
+        : normalized.replace(/,/g, '');
   } else if (lastDot !== -1) {
     const parts = normalized.split('.');
     const last = parts.at(-1) || '';

@@ -1,9 +1,9 @@
-import axios from "axios";
+import axios from 'axios';
 
 export class ApiError extends Error {
   constructor({ message, status, code, details }) {
     super(message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
@@ -16,7 +16,7 @@ export function normalizeApiError(error) {
     const data = error.response?.data;
 
     return new ApiError({
-      message: data?.message || error.message || "Request failed",
+      message: data?.message || error.message || 'Request failed',
       status,
       code: data?.code || error.code,
       details: data?.errors || data,
@@ -24,6 +24,6 @@ export function normalizeApiError(error) {
   }
 
   return new ApiError({
-    message: error instanceof Error ? error.message : "Unknown API error",
+    message: error instanceof Error ? error.message : 'Unknown API error',
   });
 }

@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 
 const initialState = {
   user: null,
@@ -20,5 +20,5 @@ export const useAuthStore = create((set, get) => ({
   updateAccessToken: (accessToken) => set({ accessToken }),
   logout: () => set(initialState),
   isAuthenticated: () => Boolean(get().accessToken && get().user),
-  isAdmin: () => get().user?.role === "ADMIN",
+  isAdmin: () => get().user?.role === 'ADMIN',
 }));

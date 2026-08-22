@@ -1,9 +1,37 @@
 import { isPrivateOrLocalHostname, isSafeLocalUploadPath } from './safe-url.js';
 
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
-const ALLOWED_TAGS = new Set(['p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'h2', 'h3', 'blockquote', 'a', 'img']);
+const ALLOWED_TAGS = new Set([
+  'p',
+  'br',
+  'strong',
+  'em',
+  'u',
+  'ul',
+  'ol',
+  'li',
+  'h2',
+  'h3',
+  'blockquote',
+  'a',
+  'img',
+]);
 const SELF_CLOSING_TAGS = new Set(['br', 'img']);
-const BLOCKED_CONTENT_TAGS = ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'meta', 'link', 'base', 'svg', 'math'];
+const BLOCKED_CONTENT_TAGS = [
+  'script',
+  'style',
+  'iframe',
+  'object',
+  'embed',
+  'form',
+  'input',
+  'button',
+  'meta',
+  'link',
+  'base',
+  'svg',
+  'math',
+];
 
 const escapeAttribute = (value = '') =>
   String(value)
@@ -25,7 +53,11 @@ const normalizeUrl = (value = '') => decodeBasicEntities(value).replace(CONTROL_
 
 const isSafeAnchorHref = (href = '') => {
   const normalized = normalizeUrl(href);
-  return normalized.startsWith('http://') || normalized.startsWith('https://') || (normalized.startsWith('/') && !normalized.startsWith('//') && !normalized.includes('..'));
+  return (
+    normalized.startsWith('http://') ||
+    normalized.startsWith('https://') ||
+    (normalized.startsWith('/') && !normalized.startsWith('//') && !normalized.includes('..'))
+  );
 };
 
 const isSafeImageSrc = (src = '') => {
@@ -62,7 +94,9 @@ const sanitizeAllowedTag = (rawTag = '') => {
     const href = normalizeUrl(getAttribute(attrs, 'href'));
     const title = getAttribute(attrs, 'title');
     const target = getAttribute(attrs, 'target');
-    const safeHref = isSafeAnchorHref(href) ? ` href="${escapeAttribute(href)}" rel="noopener noreferrer"` : '';
+    const safeHref = isSafeAnchorHref(href)
+      ? ` href="${escapeAttribute(href)}" rel="noopener noreferrer"`
+      : '';
     const safeTarget = target === '_blank' ? ' target="_blank"' : '';
     const safeTitle = title ? ` title="${escapeAttribute(title).slice(0, 255)}"` : '';
     return `<a${safeHref}${safeTarget}${safeTitle}>`;
@@ -86,7 +120,8 @@ export const stripDangerousText = (value = '') =>
     .replace(CONTROL_CHARS, '')
     .trim();
 
-export const normalizePlainText = (value = '', max = 5000) => stripDangerousText(value).slice(0, max);
+export const normalizePlainText = (value = '', max = 5000) =>
+  stripDangerousText(value).slice(0, max);
 
 export const looksLikeSpam = (value = '') => {
   const text = String(value).toLowerCase();
@@ -96,7 +131,9 @@ export const looksLikeSpam = (value = '') => {
 };
 
 export const sanitizeRichHtml = (value = '', max = 200000) => {
-  let html = String(value || '').slice(0, max).replace(CONTROL_CHARS, '');
+  let html = String(value || '')
+    .slice(0, max)
+    .replace(CONTROL_CHARS, '');
 
   for (const tag of BLOCKED_CONTENT_TAGS) {
     html = html.replace(new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}>`, 'gi'), '');

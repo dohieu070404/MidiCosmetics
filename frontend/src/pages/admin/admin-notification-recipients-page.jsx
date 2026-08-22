@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { adminApi } from '@/lib/api/admin-api';
-import { ActionButton, DangerButton, Notice, PageHeader, SecondaryButton, SectionCard, StatusBadge, TextInput, formatDate } from './admin-shared';
+import {
+  ActionButton,
+  DangerButton,
+  Notice,
+  PageHeader,
+  SecondaryButton,
+  SectionCard,
+  StatusBadge,
+  TextInput,
+  formatDate,
+} from './admin-shared';
 
 const INITIAL_ADD_FORM = { email: '' };
 const INITIAL_VERIFY_FORM = { token: '' };
@@ -18,7 +28,10 @@ export function AdminNotificationRecipientsPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const verifiedActiveCount = useMemo(() => recipients.filter((item) => item.isVerified && item.isActive).length, [recipients]);
+  const verifiedActiveCount = useMemo(
+    () => recipients.filter((item) => item.isVerified && item.isActive).length,
+    [recipients],
+  );
 
   const loadRecipients = async () => {
     setLoading(true);
@@ -50,7 +63,9 @@ export function AdminNotificationRecipientsPage() {
       }
     };
     init();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const addRecipient = async (event) => {
@@ -60,7 +75,9 @@ export function AdminNotificationRecipientsPage() {
     setMessage('');
     try {
       const response = await adminApi.createNotificationRecipient({ email: addForm.email });
-      setMessage(response?.message || 'Email đã được thêm. Vui lòng kiểm tra email để lấy mã xác minh.');
+      setMessage(
+        response?.message || 'Email đã được thêm. Vui lòng kiểm tra email để lấy mã xác minh.',
+      );
       setAddForm(INITIAL_ADD_FORM);
       await loadRecipients();
     } catch (err) {
@@ -120,7 +137,9 @@ export function AdminNotificationRecipientsPage() {
       const response = await adminApi.sendNotificationRecipientTest();
       setMessage(response?.message || 'Email test đã được gửi thành công.');
     } catch (err) {
-      setError(err.message || 'Không gửi được email test. Vui lòng kiểm tra SMTP và email đã xác minh.');
+      setError(
+        err.message || 'Không gửi được email test. Vui lòng kiểm tra SMTP và email đã xác minh.',
+      );
     } finally {
       setTesting(false);
     }
@@ -128,33 +147,74 @@ export function AdminNotificationRecipientsPage() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title="Email thông báo" description="Quản lý danh sách email nhận cảnh báo khi admin thay đổi sản phẩm, import Excel hoặc đổi mật khẩu." />
+      <PageHeader
+        title="Email thông báo"
+        description="Quản lý danh sách email nhận cảnh báo khi admin thay đổi sản phẩm, import Excel hoặc đổi mật khẩu."
+      />
       <Notice type="error">{error}</Notice>
       <Notice type="success">{message}</Notice>
 
-      <SectionCard title="Thêm email nhận thông báo" description="Email mới phải được xác minh trước khi nhận thông báo hệ thống.">
+      <SectionCard
+        title="Thêm email nhận thông báo"
+        description="Email mới phải được xác minh trước khi nhận thông báo hệ thống."
+      >
         <form className="grid gap-4 md:grid-cols-[1fr_auto]" onSubmit={addRecipient}>
-          <TextInput label="Email nhận thông báo" type="email" name="email" value={addForm.email} onChange={(event) => setAddForm({ email: event.target.value })} required hint="Không hiển thị SMTP secret trong giao diện quản trị." />
-          <div className="flex items-end"><ActionButton type="submit" disabled={saving}>{saving ? 'Đang lưu...' : 'Thêm email'}</ActionButton></div>
+          <TextInput
+            label="Email nhận thông báo"
+            type="email"
+            name="email"
+            value={addForm.email}
+            onChange={(event) => setAddForm({ email: event.target.value })}
+            required
+            hint="Không hiển thị SMTP secret trong giao diện quản trị."
+          />
+          <div className="flex items-end">
+            <ActionButton type="submit" disabled={saving}>
+              {saving ? 'Đang lưu...' : 'Thêm email'}
+            </ActionButton>
+          </div>
         </form>
       </SectionCard>
 
-      <SectionCard title="Xác minh email" description="Dán mã xác minh được gửi tới email nhận thông báo.">
+      <SectionCard
+        title="Xác minh email"
+        description="Dán mã xác minh được gửi tới email nhận thông báo."
+      >
         <form className="grid gap-4 md:grid-cols-[1fr_auto]" onSubmit={verifyRecipient}>
-          <TextInput label="Mã xác minh" name="token" value={verifyForm.token} onChange={(event) => setVerifyForm({ token: event.target.value })} required />
-          <div className="flex items-end"><ActionButton type="submit" disabled={saving}>{saving ? 'Đang xác minh...' : 'Xác minh email'}</ActionButton></div>
+          <TextInput
+            label="Mã xác minh"
+            name="token"
+            value={verifyForm.token}
+            onChange={(event) => setVerifyForm({ token: event.target.value })}
+            required
+          />
+          <div className="flex items-end">
+            <ActionButton type="submit" disabled={saving}>
+              {saving ? 'Đang xác minh...' : 'Xác minh email'}
+            </ActionButton>
+          </div>
         </form>
       </SectionCard>
 
       <SectionCard
         title="Danh sách email nhận thông báo"
         description={`${verifiedActiveCount} email đã xác minh và đang bật sẽ nhận thông báo hệ thống.`}
-        actions={<SecondaryButton type="button" onClick={sendTest} disabled={testing || verifiedActiveCount === 0}>{testing ? 'Đang gửi...' : 'Gửi email test'}</SecondaryButton>}
+        actions={
+          <SecondaryButton
+            type="button"
+            onClick={sendTest}
+            disabled={testing || verifiedActiveCount === 0}
+          >
+            {testing ? 'Đang gửi...' : 'Gửi email test'}
+          </SecondaryButton>
+        }
       >
         {loading ? (
           <p className="text-sm text-muted-foreground">Đang tải danh sách email...</p>
         ) : recipients.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Chưa có email nhận thông báo nào.</div>
+          <div className="rounded-3xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            Chưa có email nhận thông báo nào.
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
@@ -171,13 +231,27 @@ export function AdminNotificationRecipientsPage() {
                 {recipients.map((recipient) => (
                   <tr key={recipient.uuid} className="border-t border-border">
                     <td className="px-3 py-3 font-medium">{recipient.email}</td>
-                    <td className="px-3 py-3"><StatusBadge>{recipient.isVerified ? 'VALID' : 'PENDING'}</StatusBadge></td>
-                    <td className="px-3 py-3"><StatusBadge>{recipient.isActive ? 'ACTIVE' : 'INACTIVE'}</StatusBadge></td>
-                    <td className="px-3 py-3 text-muted-foreground">{formatDate(recipient.createdAt)}</td>
+                    <td className="px-3 py-3">
+                      <StatusBadge>{recipient.isVerified ? 'VALID' : 'PENDING'}</StatusBadge>
+                    </td>
+                    <td className="px-3 py-3">
+                      <StatusBadge>{recipient.isActive ? 'ACTIVE' : 'INACTIVE'}</StatusBadge>
+                    </td>
+                    <td className="px-3 py-3 text-muted-foreground">
+                      {formatDate(recipient.createdAt)}
+                    </td>
                     <td className="px-3 py-3">
                       <div className="flex justify-end gap-2">
-                        <SecondaryButton type="button" onClick={() => toggleRecipient(recipient)} disabled={!recipient.isVerified}>{recipient.isActive ? 'Tắt' : 'Bật'}</SecondaryButton>
-                        <DangerButton type="button" onClick={() => deleteRecipient(recipient)}>Xóa</DangerButton>
+                        <SecondaryButton
+                          type="button"
+                          onClick={() => toggleRecipient(recipient)}
+                          disabled={!recipient.isVerified}
+                        >
+                          {recipient.isActive ? 'Tắt' : 'Bật'}
+                        </SecondaryButton>
+                        <DangerButton type="button" onClick={() => deleteRecipient(recipient)}>
+                          Xóa
+                        </DangerButton>
                       </div>
                     </td>
                   </tr>

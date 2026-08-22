@@ -12,7 +12,11 @@ const formatPrice = (value) => {
   if (value === null || value === undefined || value === '') return 'Không có';
   const number = Number(value);
   if (!Number.isFinite(number)) return String(value);
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(number);
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(number);
 };
 
 const safeError = (error) => ({
@@ -38,9 +42,10 @@ const getTransporter = () => {
     host: env.email.smtpHost,
     port: env.email.smtpPort,
     secure: env.email.smtpSecure,
-    auth: env.email.smtpUser && env.email.smtpPass
-      ? { user: env.email.smtpUser, pass: env.email.smtpPass }
-      : undefined,
+    auth:
+      env.email.smtpUser && env.email.smtpPass
+        ? { user: env.email.smtpUser, pass: env.email.smtpPass }
+        : undefined,
     // Email templates are generated in memory. Prevent Nodemailer from ever
     // resolving local files or remote URLs if template data is compromised.
     disableFileAccess: true,
@@ -85,19 +90,41 @@ const resolveVerifiedNotificationRecipients = async () => {
   return emails;
 };
 
-const uniqueEmails = (emails = []) => [...new Set(emails.map((email) => String(email || '').trim().toLowerCase()).filter(Boolean))];
+const uniqueEmails = (emails = []) => [
+  ...new Set(
+    emails
+      .map((email) =>
+        String(email || '')
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean),
+  ),
+];
 
 const sendTemplateToEmail = async ({ to, type, rows, title }) => {
   const mailer = getTransporter();
   const { subject, text, html } = emailTemplateService.build({ type, rows, title });
 
   if (!mailer) {
-    await createEmailLog({ type, to, subject, status: 'SKIPPED', errorMessage: 'SMTP is not configured' });
+    await createEmailLog({
+      type,
+      to,
+      subject,
+      status: 'SKIPPED',
+      errorMessage: 'SMTP is not configured',
+    });
     return { ok: false, skipped: true, reason: 'SMTP_NOT_CONFIGURED' };
   }
 
   if (!to) {
-    await createEmailLog({ type, to: 'unknown', subject, status: 'SKIPPED', errorMessage: 'Recipient is missing' });
+    await createEmailLog({
+      type,
+      to: 'unknown',
+      subject,
+      status: 'SKIPPED',
+      errorMessage: 'Recipient is missing',
+    });
     return { ok: false, skipped: true, reason: 'RECIPIENT_MISSING' };
   }
 
@@ -120,7 +147,9 @@ const sendTemplateToEmail = async ({ to, type, rows, title }) => {
       to,
       subject,
       status: 'FAILED',
-      errorMessage: env.isProduction ? (error?.code || 'SMTP_SEND_FAILED') : (error?.message || 'Unknown SMTP error'),
+      errorMessage: env.isProduction
+        ? error?.code || 'SMTP_SEND_FAILED'
+        : error?.message || 'Unknown SMTP error',
     });
     return { ok: false, reason: 'SMTP_SEND_FAILED', error };
   }
@@ -159,7 +188,8 @@ const requestRows = (req) => [
 
 const getProductName = (product) => product?.name || 'Không rõ tên sản phẩm';
 const getProductSku = (product) => product?.sku || 'Không có SKU';
-const getAdminProductLink = () => env.frontendUrl ? `${env.frontendUrl.replace(/\/+$/, '')}/admin/products` : null;
+const getAdminProductLink = () =>
+  env.frontendUrl ? `${env.frontendUrl.replace(/\/+$/, '')}/admin/products` : null;
 
 const productRows = ({ req, action, product, beforeProduct = null, afterProduct = null }) => [
   ...requestRows(req),
@@ -167,7 +197,14 @@ const productRows = ({ req, action, product, beforeProduct = null, afterProduct 
   { label: 'Đối tượng', value: getProductName(afterProduct || product || beforeProduct) },
   { label: 'SKU', value: getProductSku(afterProduct || product || beforeProduct) },
   { label: 'Giá cũ', value: beforeProduct ? formatPrice(beforeProduct.price) : null },
-  { label: 'Giá mới', value: afterProduct ? formatPrice(afterProduct.price) : product ? formatPrice(product.price) : null },
+  {
+    label: 'Giá mới',
+    value: afterProduct
+      ? formatPrice(afterProduct.price)
+      : product
+        ? formatPrice(product.price)
+        : null,
+  },
   { label: 'Trạng thái cũ', value: beforeProduct?.status || null },
   { label: 'Trạng thái mới', value: afterProduct?.status || product?.status || null },
   { label: 'Link admin', value: getAdminProductLink() },
@@ -188,7 +225,11 @@ export const emailNotificationService = {
         { label: 'Email nhận thông báo', value: recipient?.email },
         { label: 'Mã xác minh', value: verificationToken },
         { label: 'Hiệu lực đến', value: formatEmailDateTime(expiresAt) },
-        { label: 'Cảnh báo', value: 'Chỉ nhập mã này trong trang quản trị Midi Cosmetics nếu bạn muốn kích hoạt email nhận thông báo.' },
+        {
+          label: 'Cảnh báo',
+          value:
+            'Chỉ nhập mã này trong trang quản trị Midi Cosmetics nếu bạn muốn kích hoạt email nhận thông báo.',
+        },
       ],
     });
   },
@@ -205,7 +246,10 @@ export const emailNotificationService = {
           ...requestRows(req),
           { label: 'Hành động', value: 'Gửi email test' },
           { label: 'Đối tượng', value: email },
-          { label: 'Chi tiết', value: 'Nếu bạn nhận được email này, cấu hình SMTP và email thông báo đang hoạt động.' },
+          {
+            label: 'Chi tiết',
+            value: 'Nếu bạn nhận được email này, cấu hình SMTP và email thông báo đang hoạt động.',
+          },
         ],
       });
       results.push({ email, ...result });
@@ -221,26 +265,47 @@ export const emailNotificationService = {
   },
 
   sendProductUpdated(req, beforeProduct, afterProduct) {
-    const oldPrice = beforeProduct?.price === null || beforeProduct?.price === undefined ? null : Number(beforeProduct.price);
-    const newPrice = afterProduct?.price === null || afterProduct?.price === undefined ? null : Number(afterProduct.price);
-    const priceChanged = Number.isFinite(oldPrice) && Number.isFinite(newPrice) && oldPrice !== newPrice;
+    const oldPrice =
+      beforeProduct?.price === null || beforeProduct?.price === undefined
+        ? null
+        : Number(beforeProduct.price);
+    const newPrice =
+      afterProduct?.price === null || afterProduct?.price === undefined
+        ? null
+        : Number(afterProduct.price);
+    const priceChanged =
+      Number.isFinite(oldPrice) && Number.isFinite(newPrice) && oldPrice !== newPrice;
     sendNotificationAlertAsync({
-      type: priceChanged ? EMAIL_TEMPLATE_TYPES.PRODUCT_PRICE_CHANGED : EMAIL_TEMPLATE_TYPES.PRODUCT_UPDATED,
-      rows: productRows({ req, action: priceChanged ? 'Sửa giá sản phẩm' : 'Sửa sản phẩm', beforeProduct, afterProduct }),
+      type: priceChanged
+        ? EMAIL_TEMPLATE_TYPES.PRODUCT_PRICE_CHANGED
+        : EMAIL_TEMPLATE_TYPES.PRODUCT_UPDATED,
+      rows: productRows({
+        req,
+        action: priceChanged ? 'Sửa giá sản phẩm' : 'Sửa sản phẩm',
+        beforeProduct,
+        afterProduct,
+      }),
     });
   },
 
   sendProductDeleted(req, beforeProduct) {
     sendNotificationAlertAsync({
       type: EMAIL_TEMPLATE_TYPES.PRODUCT_DELETED,
-      rows: productRows({ req, action: 'Xóa sản phẩm', beforeProduct, afterProduct: { ...beforeProduct, status: 'ARCHIVED' } }),
+      rows: productRows({
+        req,
+        action: 'Xóa sản phẩm',
+        beforeProduct,
+        afterProduct: { ...beforeProduct, status: 'ARCHIVED' },
+      }),
     });
   },
 
   sendProductStatusChanged(req, beforeProduct, afterProduct) {
     const nextStatus = afterProduct?.status;
     sendNotificationAlertAsync({
-      type: ['INACTIVE', 'ARCHIVED'].includes(nextStatus) ? EMAIL_TEMPLATE_TYPES.PRODUCT_DELETED : EMAIL_TEMPLATE_TYPES.PRODUCT_STATUS_CHANGED,
+      type: ['INACTIVE', 'ARCHIVED'].includes(nextStatus)
+        ? EMAIL_TEMPLATE_TYPES.PRODUCT_DELETED
+        : EMAIL_TEMPLATE_TYPES.PRODUCT_STATUS_CHANGED,
       rows: productRows({ req, action: 'Đổi trạng thái sản phẩm', beforeProduct, afterProduct }),
     });
   },
@@ -269,7 +334,11 @@ export const emailNotificationService = {
         { label: 'Hiệu lực đến', value: formatEmailDateTime(expiresAt) },
         { label: 'IP', value: req ? getIpAddress(req) : null },
         { label: 'User-agent', value: req ? getUserAgent(req) : null },
-        { label: 'Cảnh báo', value: 'Nếu bạn không yêu cầu đổi mật khẩu, hãy bỏ qua email này và kiểm tra bảo mật tài khoản.' },
+        {
+          label: 'Cảnh báo',
+          value:
+            'Nếu bạn không yêu cầu đổi mật khẩu, hãy bỏ qua email này và kiểm tra bảo mật tài khoản.',
+        },
       ],
     });
   },
@@ -279,11 +348,18 @@ export const emailNotificationService = {
       { label: 'Email admin', value: admin?.email || 'Không rõ' },
       { label: 'IP', value: req ? getIpAddress(req) : null },
       { label: 'User-agent', value: req ? getUserAgent(req) : null },
-      { label: 'Cảnh báo', value: 'Nếu bạn không thực hiện thay đổi này, hãy kiểm tra bảo mật tài khoản ngay.' },
+      {
+        label: 'Cảnh báo',
+        value: 'Nếu bạn không thực hiện thay đổi này, hãy kiểm tra bảo mật tài khoản ngay.',
+      },
     ];
 
     const directRecipients = [admin?.email];
-    sendTemplateToManyAsync({ to: directRecipients, type: EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGED, rows });
+    sendTemplateToManyAsync({
+      to: directRecipients,
+      type: EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGED,
+      rows,
+    });
     sendNotificationAlertAsync({ type: EMAIL_TEMPLATE_TYPES.ADMIN_PASSWORD_CHANGED, rows });
   },
 

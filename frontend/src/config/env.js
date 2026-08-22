@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 const booleanStringSchema = z
-  .union([z.boolean(), z.enum(["true", "false"])])
-  .transform((value) => value === true || value === "true");
+  .union([z.boolean(), z.enum(['true', 'false'])])
+  .transform((value) => value === true || value === 'true');
 
 const envSchema = z.object({
   APP_NAME: z.string().min(1),
@@ -19,32 +19,31 @@ const envSchema = z.object({
 });
 
 const rawEnv = {
-  APP_NAME: import.meta.env.VITE_APP_NAME ?? "Midi Cosmetics",
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1",
-  API_ORIGIN: import.meta.env.VITE_API_ORIGIN ?? "http://localhost:8080",
-  ENABLE_API_MOCKING: import.meta.env.VITE_ENABLE_API_MOCKING ?? "false",
+  APP_NAME: import.meta.env.VITE_APP_NAME ?? 'Midi Cosmetics',
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1',
+  API_ORIGIN: import.meta.env.VITE_API_ORIGIN ?? 'http://localhost:8080',
+  ENABLE_API_MOCKING: import.meta.env.VITE_ENABLE_API_MOCKING ?? 'false',
   MODE: import.meta.env.MODE,
   IS_PROD: import.meta.env.PROD,
   IS_DEV: import.meta.env.DEV,
-  ADMIN_LOGIN_PATH: import.meta.env.VITE_ADMIN_LOGIN_PATH ?? "/quan-tri-midi-secure-2026",
-  MESSENGER_URL: import.meta.env.VITE_MESSENGER_URL ?? "https://m.me/61580016268412",
-  QUOTE_CAPTCHA_ENABLED: import.meta.env.VITE_QUOTE_CAPTCHA_ENABLED ?? "true",
-  RECAPTCHA_SITE_KEY: import.meta.env.VITE_RECAPTCHA_SITE_KEY ?? "",
+  ADMIN_LOGIN_PATH: import.meta.env.VITE_ADMIN_LOGIN_PATH ?? '/quan-tri-midi-secure-2026',
+  MESSENGER_URL: import.meta.env.VITE_MESSENGER_URL ?? 'https://m.me/61580016268412',
+  QUOTE_CAPTCHA_ENABLED: import.meta.env.VITE_QUOTE_CAPTCHA_ENABLED ?? 'true',
+  RECAPTCHA_SITE_KEY: import.meta.env.VITE_RECAPTCHA_SITE_KEY ?? '',
 };
 
 const parsedEnv = envSchema.safeParse(rawEnv);
 
 if (!parsedEnv.success) {
-  console.error("Invalid environment variables", parsedEnv.error.flatten().fieldErrors);
-  throw new Error("Invalid environment variables");
+  console.error('Invalid environment variables', parsedEnv.error.flatten().fieldErrors);
+  throw new Error('Invalid environment variables');
 }
 
 export const env = parsedEnv.data;
 
-
-export function normalizeAppPath(path, fallback = "/") {
-  const value = String(path || "").trim();
+export function normalizeAppPath(path, fallback = '/') {
+  const value = String(path || '').trim();
   if (!value) return fallback;
-  const withSlash = value.startsWith("/") ? value : `/${value}`;
-  return withSlash.replace(/\/+/g, "/");
+  const withSlash = value.startsWith('/') ? value : `/${value}`;
+  return withSlash.replace(/\/+/g, '/');
 }

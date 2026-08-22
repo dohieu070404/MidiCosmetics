@@ -10,7 +10,9 @@ const parseBoolean = (value) => {
 };
 
 const parseTrustProxy = (value) => {
-  const normalized = String(value ?? '').trim().toLowerCase();
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase();
   if (!normalized || ['false', '0', 'no', 'n'].includes(normalized)) return false;
   if (['true', 'yes', 'y'].includes(normalized)) return true;
   if (/^[1-9]\d*$/.test(normalized)) return Number(normalized);
@@ -26,13 +28,19 @@ const csvToArray = (value) => {
 };
 
 const normalizeHostname = (value) => {
-  const raw = String(value || '').trim().toLowerCase();
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!raw) return '';
   try {
     const candidate = raw.includes('://') ? raw : `https://${raw}`;
     return new URL(candidate).hostname.replace(/\.$/, '');
   } catch {
-    return raw.replace(/^https?:\/\//, '').split('/')[0].split(':')[0].replace(/\.$/, '');
+    return raw
+      .replace(/^https?:\/\//, '')
+      .split('/')[0]
+      .split(':')[0]
+      .replace(/\.$/, '');
   }
 };
 
@@ -56,18 +64,25 @@ const envSchema = z.object({
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
   CORS_ORIGIN: z.string().default(''),
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  RATE_LIMIT_WINDOW_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   LOGGER_PRETTY: z.string().default('false'),
-  TRUST_PROXY: z.string().regex(/^(?:false|true|0|[1-9]\d*)$/i).default('false'),
+  TRUST_PROXY: z
+    .string()
+    .regex(/^(?:false|true|0|[1-9]\d*)$/i)
+    .default('false'),
 
   // One-time production bootstrap for the first admin account.
   ADMIN_ALLOWED_EMAILS: z.string().default(''),
   ADMIN_BOOTSTRAP_TOKEN: z.preprocess(emptyStringToUndefined, z.string().min(32).optional()),
   ADMIN_BOOTSTRAP_ENABLED: z.string().default('false'),
-  ADMIN_LOGIN_PATH: z.string().min(1).default("/quan-tri-midi-secure-2026"),
+  ADMIN_LOGIN_PATH: z.string().min(1).default('/quan-tri-midi-secure-2026'),
 
   SMTP_HOST: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
@@ -91,14 +106,22 @@ const envSchema = z.object({
   PRIVATE_UPLOAD_DIR: z.string().min(1).default('.private/imports'),
   PUBLIC_UPLOAD_BASE_URL: z.preprocess(
     emptyStringToUndefined,
-    z.string().url().refine((value) => {
-      try {
-        const parsedUrl = new URL(value);
-        return ['http:', 'https:'].includes(parsedUrl.protocol) && !parsedUrl.username && !parsedUrl.password;
-      } catch {
-        return false;
-      }
-    }, 'PUBLIC_UPLOAD_BASE_URL must be an http(s) URL without embedded credentials').optional()
+    z
+      .string()
+      .url()
+      .refine((value) => {
+        try {
+          const parsedUrl = new URL(value);
+          return (
+            ['http:', 'https:'].includes(parsedUrl.protocol) &&
+            !parsedUrl.username &&
+            !parsedUrl.password
+          );
+        } catch {
+          return false;
+        }
+      }, 'PUBLIC_UPLOAD_BASE_URL must be an http(s) URL without embedded credentials')
+      .optional(),
   ),
   UPLOAD_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(5),
   UPLOAD_IMAGE_MAX_FILE_SIZE_MB: z.coerce.number().int().positive().default(4),
@@ -114,7 +137,9 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  const details = parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ');
+  const details = parsed.error.issues
+    .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+    .join('; ');
   throw new Error(`Invalid environment configuration: ${details}`);
 }
 
@@ -125,9 +150,20 @@ const assertProductionSafety = () => {
 
   const rejectUnsafeSecret = (name, value) => {
     const normalized = String(value || '').toLowerCase();
-    const unsafeMarkers = ['change_me', 'replace_', 'default', 'placeholder', 'secret_at_least_32_chars'];
-    if (String(value || '').length < 48 || unsafeMarkers.some((marker) => normalized.includes(marker))) {
-      throw new Error(`${name} must be a random value of at least 48 characters when NODE_ENV=production`);
+    const unsafeMarkers = [
+      'change_me',
+      'replace_',
+      'default',
+      'placeholder',
+      'secret_at_least_32_chars',
+    ];
+    if (
+      String(value || '').length < 48 ||
+      unsafeMarkers.some((marker) => normalized.includes(marker))
+    ) {
+      throw new Error(
+        `${name} must be a random value of at least 48 characters when NODE_ENV=production`,
+      );
     }
   };
 
@@ -139,7 +175,9 @@ const assertProductionSafety = () => {
 
   const allowedOrigins = csvToArray(envVars.CORS_ORIGIN);
   if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
-    throw new Error('CORS_ORIGIN must be an explicit comma-separated whitelist when NODE_ENV=production');
+    throw new Error(
+      'CORS_ORIGIN must be an explicit comma-separated whitelist when NODE_ENV=production',
+    );
   }
   for (const origin of allowedOrigins) {
     let parsedOrigin;
@@ -148,8 +186,15 @@ const assertProductionSafety = () => {
     } catch {
       throw new Error('Every CORS_ORIGIN value must be a valid HTTPS origin');
     }
-    if (parsedOrigin.protocol !== 'https:' || parsedOrigin.origin !== origin || parsedOrigin.username || parsedOrigin.password) {
-      throw new Error('Every CORS_ORIGIN value must be an exact HTTPS origin without credentials or paths');
+    if (
+      parsedOrigin.protocol !== 'https:' ||
+      parsedOrigin.origin !== origin ||
+      parsedOrigin.username ||
+      parsedOrigin.password
+    ) {
+      throw new Error(
+        'Every CORS_ORIGIN value must be an exact HTTPS origin without credentials or paths',
+      );
     }
   }
 
@@ -162,7 +207,9 @@ const assertProductionSafety = () => {
   }
 
   if (String(envVars.TRUST_PROXY).toLowerCase() === 'true') {
-    throw new Error('TRUST_PROXY=true is too broad in production; use a trusted proxy hop count such as 1');
+    throw new Error(
+      'TRUST_PROXY=true is too broad in production; use a trusted proxy hop count such as 1',
+    );
   }
 
   if (parseBoolean(envVars.SEED_DATABASE)) {
@@ -185,7 +232,10 @@ const assertProductionSafety = () => {
     throw new Error('UPLOAD_DRIVER must be cloudinary when NODE_ENV=production');
   }
 
-  if (envVars.PUBLIC_UPLOAD_BASE_URL && new URL(envVars.PUBLIC_UPLOAD_BASE_URL).protocol !== 'https:') {
+  if (
+    envVars.PUBLIC_UPLOAD_BASE_URL &&
+    new URL(envVars.PUBLIC_UPLOAD_BASE_URL).protocol !== 'https:'
+  ) {
     throw new Error('PUBLIC_UPLOAD_BASE_URL must use HTTPS in production');
   }
 
@@ -201,13 +251,17 @@ const assertProductionSafety = () => {
 
   if (parseBoolean(envVars.ADMIN_BOOTSTRAP_ENABLED)) {
     if (!envVars.ADMIN_BOOTSTRAP_TOKEN || String(envVars.ADMIN_BOOTSTRAP_TOKEN).length < 32) {
-      throw new Error('ADMIN_BOOTSTRAP_TOKEN must be at least 32 characters when ADMIN_BOOTSTRAP_ENABLED=true');
+      throw new Error(
+        'ADMIN_BOOTSTRAP_TOKEN must be at least 32 characters when ADMIN_BOOTSTRAP_ENABLED=true',
+      );
     }
 
     rejectUnsafeSecret('ADMIN_BOOTSTRAP_TOKEN', envVars.ADMIN_BOOTSTRAP_TOKEN);
 
     if (csvToArray(envVars.ADMIN_ALLOWED_EMAILS).length === 0) {
-      throw new Error('ADMIN_ALLOWED_EMAILS must contain at least one email when ADMIN_BOOTSTRAP_ENABLED=true');
+      throw new Error(
+        'ADMIN_ALLOWED_EMAILS must contain at least one email when ADMIN_BOOTSTRAP_ENABLED=true',
+      );
     }
   }
 };
@@ -270,7 +324,11 @@ export const env = Object.freeze({
     secretKey: envVars.RECAPTCHA_SECRET_KEY || '',
     // Accept either bare hostnames or accidentally pasted https:// URLs in
     // Vercel, then compare only normalized hostnames at verification time.
-    allowedHostnames: [...new Set(csvToArray(envVars.RECAPTCHA_ALLOWED_HOSTNAMES).map(normalizeHostname).filter(Boolean))],
+    allowedHostnames: [
+      ...new Set(
+        csvToArray(envVars.RECAPTCHA_ALLOWED_HOSTNAMES).map(normalizeHostname).filter(Boolean),
+      ),
+    ],
   },
   email: {
     smtpHost: envVars.SMTP_HOST || '',

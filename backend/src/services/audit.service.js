@@ -3,12 +3,24 @@ import { getIpAddress, getUserAgent } from '../utils/request-context.js';
 import { toRedactedJson } from '../utils/safe-json.js';
 
 export const auditService = {
-  async log(req, { action, entityType, entityId = null, beforeData = null, afterData = null, metadata = null, actorId = undefined, actorEmail = undefined }) {
+  async log(
+    req,
+    {
+      action,
+      entityType,
+      entityId = null,
+      beforeData = null,
+      afterData = null,
+      metadata = null,
+      actorId = undefined,
+      actorEmail = undefined,
+    },
+  ) {
     try {
       await prisma.auditLog.create({
         data: {
-          actorId: actorId === undefined ? (req.user?.id || null) : actorId,
-          actorEmail: actorEmail === undefined ? (req.user?.email || null) : actorEmail,
+          actorId: actorId === undefined ? req.user?.id || null : actorId,
+          actorEmail: actorEmail === undefined ? req.user?.email || null : actorEmail,
           action,
           entityType,
           entityId: entityId ? String(entityId) : null,

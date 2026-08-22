@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api/admin-api';
-import { ActionButton, AdminTable, DangerButton, FileInput, Notice, PageHeader, SecondaryButton, SectionCard, TabButtons, TextArea, TextInput } from './admin-shared';
+import {
+  ActionButton,
+  AdminTable,
+  DangerButton,
+  FileInput,
+  Notice,
+  PageHeader,
+  SecondaryButton,
+  SectionCard,
+  TabButtons,
+  TextArea,
+  TextInput,
+} from './admin-shared';
 
 const initial = { name: '', description: '', logoUrl: '', country: '' };
 const groups = [
@@ -51,17 +63,42 @@ export function AdminTaxonomiesPage() {
         setBrands(br.data.brands || []);
         setTags(t.data.tags || []);
       })
-      .catch((e) => { if (mounted) setError(e.message); });
-    return () => { mounted = false; };
+      .catch((e) => {
+        if (mounted) setError(e.message);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const set = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const apiFor = (type) => ({
-    blog: { create: adminApi.createBlogCategory, update: adminApi.updateBlogCategory, del: adminApi.deleteBlogCategory, rows: blogCats },
-    product: { create: adminApi.createProductCategory, update: adminApi.updateProductCategory, del: adminApi.deleteProductCategory, rows: prodCats },
-    brand: { create: adminApi.createProductBrand, update: adminApi.updateProductBrand, del: adminApi.deleteProductBrand, rows: brands },
-    tag: { create: adminApi.createBlogTag, update: adminApi.updateBlogTag, del: adminApi.deleteBlogTag, rows: tags },
-  }[type]);
+  const apiFor = (type) =>
+    ({
+      blog: {
+        create: adminApi.createBlogCategory,
+        update: adminApi.updateBlogCategory,
+        del: adminApi.deleteBlogCategory,
+        rows: blogCats,
+      },
+      product: {
+        create: adminApi.createProductCategory,
+        update: adminApi.updateProductCategory,
+        del: adminApi.deleteProductCategory,
+        rows: prodCats,
+      },
+      brand: {
+        create: adminApi.createProductBrand,
+        update: adminApi.updateProductBrand,
+        del: adminApi.deleteProductBrand,
+        rows: brands,
+      },
+      tag: {
+        create: adminApi.createBlogTag,
+        update: adminApi.updateBlogTag,
+        del: adminApi.deleteBlogTag,
+        rows: tags,
+      },
+    })[type];
 
   const switchGroup = (type) => {
     setActive(type);
@@ -75,7 +112,12 @@ export function AdminTaxonomiesPage() {
   const edit = (type, row) => {
     setActive(type);
     setEditing(row.uuid);
-    setForm({ name: row.name || '', description: row.description || '', logoUrl: row.logoUrl || '', country: row.country || '' });
+    setForm({
+      name: row.name || '',
+      description: row.description || '',
+      logoUrl: row.logoUrl || '',
+      country: row.country || '',
+    });
     setLogo(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -101,11 +143,17 @@ export function AdminTaxonomiesPage() {
         const res = await adminApi.uploadImage(fd);
         logoUrl = res.data.media.secureUrl;
       }
-      const payload = active === 'brand'
-        ? { name: form.name, description: form.description || null, logoUrl: logoUrl || null, country: form.country || null }
-        : active === 'tag'
-          ? { name: form.name }
-          : { name: form.name, description: form.description || null };
+      const payload =
+        active === 'brand'
+          ? {
+              name: form.name,
+              description: form.description || null,
+              logoUrl: logoUrl || null,
+              country: form.country || null,
+            }
+          : active === 'tag'
+            ? { name: form.name }
+            : { name: form.name, description: form.description || null };
       if (editing) {
         await api.update(editing, payload);
         setOk('Đã cập nhật.');
@@ -132,14 +180,39 @@ export function AdminTaxonomiesPage() {
       <Notice type="success">{ok}</Notice>
       <TabButtons value={active} onChange={switchGroup} items={groups} />
       <div className="grid gap-6 lg:grid-cols-[24rem_1fr]">
-        <SectionCard title={editing ? `Sửa ${activeLabel}` : `Tạo ${activeLabel}`} description={active === 'brand' ? 'Có thể nhập URL logo hoặc tải logo lên.' : 'Đường dẫn sẽ tự tạo từ tên nếu để trống.'}>
+        <SectionCard
+          title={editing ? `Sửa ${activeLabel}` : `Tạo ${activeLabel}`}
+          description={
+            active === 'brand'
+              ? 'Có thể nhập URL logo hoặc tải logo lên.'
+              : 'Đường dẫn sẽ tự tạo từ tên nếu để trống.'
+          }
+        >
           <form onSubmit={submit} className="grid gap-4">
             <TextInput label="Tên" name="name" value={form.name} onChange={set} required />
-            {active === 'brand' ? <><TextInput label="Quốc gia" name="country" value={form.country} onChange={set} /><FileInput label="Tải logo thương hiệu lên" accept="image/png,image/jpeg,image/webp" onChange={(e) => setLogo(e.target.files?.[0] || null)} hint={form.logoUrl ? 'Đang có logo. Upload file mới nếu muốn thay.' : ''} /></> : null}
-            {active !== 'tag' ? <TextArea label="Mô tả" name="description" value={form.description} onChange={set} /> : null}
+            {active === 'brand' ? (
+              <>
+                <TextInput label="Quốc gia" name="country" value={form.country} onChange={set} />
+                <FileInput
+                  label="Tải logo thương hiệu lên"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) => setLogo(e.target.files?.[0] || null)}
+                  hint={form.logoUrl ? 'Đang có logo. Upload file mới nếu muốn thay.' : ''}
+                />
+              </>
+            ) : null}
+            {active !== 'tag' ? (
+              <TextArea label="Mô tả" name="description" value={form.description} onChange={set} />
+            ) : null}
             <div className="flex flex-wrap gap-2">
-              <ActionButton disabled={loading}>{loading ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}</ActionButton>
-              {editing ? <SecondaryButton type="button" onClick={reset}>Huỷ sửa</SecondaryButton> : null}
+              <ActionButton disabled={loading}>
+                {loading ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
+              </ActionButton>
+              {editing ? (
+                <SecondaryButton type="button" onClick={reset}>
+                  Huỷ sửa
+                </SecondaryButton>
+              ) : null}
             </div>
           </form>
         </SectionCard>
@@ -148,10 +221,32 @@ export function AdminTaxonomiesPage() {
             columns={[
               { key: 'name', label: 'Tên' },
               { key: 'slug', label: 'Slug' },
-              ...(active === 'brand' ? [{ key: 'logoUrl', label: 'Logo', render: (r) => r.logoUrl ? <span className="text-emerald-700">Có logo</span> : '-' }, { key: 'country', label: 'Quốc gia' }] : []),
+              ...(active === 'brand'
+                ? [
+                    {
+                      key: 'logoUrl',
+                      label: 'Logo',
+                      render: (r) =>
+                        r.logoUrl ? <span className="text-emerald-700">Có logo</span> : '-',
+                    },
+                    { key: 'country', label: 'Quốc gia' },
+                  ]
+                : []),
             ]}
             rows={current.rows}
-            actions={(r) => <div className="flex flex-wrap gap-2"><SecondaryButton type="button" onClick={() => edit(active, r)}>Sửa</SecondaryButton><DangerButton type="button" onClick={() => confirm('Xoá mềm mục này?') && current.del(r.uuid).then(load)}>Xoá</DangerButton></div>}
+            actions={(r) => (
+              <div className="flex flex-wrap gap-2">
+                <SecondaryButton type="button" onClick={() => edit(active, r)}>
+                  Sửa
+                </SecondaryButton>
+                <DangerButton
+                  type="button"
+                  onClick={() => confirm('Xoá mềm mục này?') && current.del(r.uuid).then(load)}
+                >
+                  Xoá
+                </DangerButton>
+              </div>
+            )}
           />
         </SectionCard>
       </div>

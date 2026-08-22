@@ -1,27 +1,43 @@
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 function Card({ className, ...props }) {
-  return <div className={cn("rounded-2xl border border-border/70 bg-card text-card-foreground shadow-[0_12px_40px_rgba(54,38,29,0.055)] transition-shadow duration-300 hover:shadow-[0_18px_55px_rgba(54,38,29,0.085)]", className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border border-border/70 bg-card text-card-foreground shadow-[0_12px_40px_rgba(54,38,29,0.055)] transition-shadow duration-300 hover:shadow-[0_18px_55px_rgba(54,38,29,0.085)]',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 function CardHeader({ className, ...props }) {
-  return <div className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />;
+  return <div className={cn('flex flex-col space-y-1.5 p-6', className)} {...props} />;
 }
 
 function CardTitle({ className, ...props }) {
-  return <h3 className={cn("font-display text-2xl font-normal leading-none tracking-[-0.035em]", className)} {...props} />;
+  return (
+    <h3
+      className={cn(
+        'font-display text-2xl font-normal leading-none tracking-[-0.035em]',
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 function CardDescription({ className, ...props }) {
-  return <p className={cn("text-sm leading-6 text-muted-foreground", className)} {...props} />;
+  return <p className={cn('text-sm leading-6 text-muted-foreground', className)} {...props} />;
 }
 
 function CardContent({ className, ...props }) {
-  return <div className={cn("p-6 pt-0", className)} {...props} />;
+  return <div className={cn('p-6 pt-0', className)} {...props} />;
 }
 
 function CardFooter({ className, ...props }) {
-  return <div className={cn("flex items-center p-6 pt-0", className)} {...props} />;
+  return <div className={cn('flex items-center p-6 pt-0', className)} {...props} />;
 }
 
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };

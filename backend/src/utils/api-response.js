@@ -1,6 +1,9 @@
 import { toSafeJson } from './safe-json.js';
 
-export const sendSuccess = (res, { statusCode = 200, message = 'Success', data = {}, meta = {} } = {}) => {
+export const sendSuccess = (
+  res,
+  { statusCode = 200, message = 'Success', data = {}, meta = {} } = {},
+) => {
   return res.status(statusCode).json({
     success: true,
     message,
@@ -9,7 +12,10 @@ export const sendSuccess = (res, { statusCode = 200, message = 'Success', data =
   });
 };
 
-export const sendError = (res, { statusCode = 500, message = 'Internal server error', code, errors = [] } = {}) => {
+export const sendError = (
+  res,
+  { statusCode = 500, message = 'Internal server error', code, errors = [] } = {},
+) => {
   return res.status(statusCode).json({
     success: false,
     message,

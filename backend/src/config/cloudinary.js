@@ -1,13 +1,16 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { env } from './env.js';
 
-const hasCloudinaryConfig = () => Boolean(env.cloudinary.cloudName && env.cloudinary.apiKey && env.cloudinary.apiSecret);
+const hasCloudinaryConfig = () =>
+  Boolean(env.cloudinary.cloudName && env.cloudinary.apiKey && env.cloudinary.apiSecret);
 
 export const isCloudinaryConfigured = hasCloudinaryConfig;
 
 export const assertCloudinaryConfigured = () => {
   if (!hasCloudinaryConfig()) {
-    throw new Error('UPLOAD_DRIVER=cloudinary requires CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET');
+    throw new Error(
+      'UPLOAD_DRIVER=cloudinary requires CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET',
+    );
   }
 };
 

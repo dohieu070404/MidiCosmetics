@@ -12,7 +12,9 @@ const resolveConfiguredDir = (value, fallback) => {
   const appRoot = path.resolve(process.cwd());
   const tempRoot = path.resolve(os.tmpdir());
   if (!isWithin(appRoot, resolved) && !isWithin(tempRoot, resolved)) {
-    throw new Error('Upload directories must stay inside the application directory or the operating-system temp directory');
+    throw new Error(
+      'Upload directories must stay inside the application directory or the operating-system temp directory',
+    );
   }
   return resolved;
 };
@@ -26,7 +28,8 @@ const safeFilePath = (directory, filename) => {
 };
 
 export const getUploadDir = () => resolveConfiguredDir(env.upload.dir, 'uploads');
-export const getPrivateUploadDir = () => resolveConfiguredDir(env.upload.privateDir, '.private/imports');
+export const getPrivateUploadDir = () =>
+  resolveConfiguredDir(env.upload.privateDir, '.private/imports');
 
 export const ensureUploadDir = () => {
   const uploadDir = getUploadDir();
@@ -44,7 +47,9 @@ export const buildLocalUploadPath = (filename) => `/uploads/${encodeURIComponent
 
 export const buildLocalUploadUrl = (filename) => {
   const relativeUrl = buildLocalUploadPath(filename);
-  const base = String(env.upload.publicBaseUrl || '').trim().replace(/\/+$/, '');
+  const base = String(env.upload.publicBaseUrl || '')
+    .trim()
+    .replace(/\/+$/, '');
   if (!base) return relativeUrl;
   if (base.endsWith('/uploads')) return `${base}/${encodeURIComponent(filename)}`;
   return `${base}${relativeUrl}`;

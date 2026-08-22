@@ -11,7 +11,11 @@ import { buildSearchWhere, compactObject } from '../../utils/prisma-format.js';
 import { buildUniqueSlug, ensureSlug } from '../../utils/slug.js';
 import { normalizePlainText, sanitizeRichHtml } from '../../utils/sanitize.js';
 import { validateRemoteImageUrl } from '../../utils/safe-url.js';
-import { buildLocalUploadUrl, localUploadFilePath, privateUploadFilePath } from '../../utils/upload-paths.js';
+import {
+  buildLocalUploadUrl,
+  localUploadFilePath,
+  privateUploadFilePath,
+} from '../../utils/upload-paths.js';
 
 const categorySelect = {
   id: true,
@@ -79,7 +83,6 @@ const postInclude = {
   tags: { include: { tag: { select: { uuid: true, name: true, slug: true } } } },
 };
 
-
 const PRODUCT_IMPORT_TEMPLATE_FILENAME = 'mau-import-san-pham-kiot.xlsx';
 const PRODUCT_INVENTORY_EXPORT_FILENAME = 'midi-kho-hang-hien-co.xlsx';
 const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -138,7 +141,7 @@ const KIOT_IMPORT_TEMPLATE_SAMPLE_ROW = {
   'Thương hiệu': 'Midi Cosmetics',
   'Giá bán': 250000,
   'Tồn kho': 10,
-  'ĐVT': 'hộp',
+  ĐVT: 'hộp',
   'Mã ĐVT Cơ bản': '',
   'Quy đổi': '',
   'Thuộc tính': '',
@@ -174,7 +177,14 @@ const KIOT_IMPORT_TEMPLATE_SAMPLE_ROW = {
   'Thời gian tạo': new Date().toISOString().slice(0, 10),
 };
 
-const IMPORTANT_IMPORT_FIELDS = ['description', 'benefits', 'howToUse', 'skinType', 'ingredients', 'caution'];
+const IMPORTANT_IMPORT_FIELDS = [
+  'description',
+  'benefits',
+  'howToUse',
+  'skinType',
+  'ingredients',
+  'caution',
+];
 const IMPORTANT_IMPORT_FIELD_LABELS = {
   description: 'Mô tả',
   benefits: 'Công dụng',
@@ -184,13 +194,22 @@ const IMPORTANT_IMPORT_FIELD_LABELS = {
   caution: 'Lưu ý sử dụng',
 };
 
-const hasImportValue = (value) => value !== null && value !== undefined && String(value).trim() !== '';
+const hasImportValue = (value) =>
+  value !== null && value !== undefined && String(value).trim() !== '';
 const readImportText = (raw, aliases) => {
   const value = pickCell(raw, aliases);
   return hasImportValue(value) ? String(value).trim() : null;
 };
 
-const listWithPagination = async ({ model, where, page, limit, orderBy = { createdAt: 'desc' }, include, select }) => {
+const listWithPagination = async ({
+  model,
+  where,
+  page,
+  limit,
+  orderBy = { createdAt: 'desc' },
+  include,
+  select,
+}) => {
   const [items, total] = await Promise.all([
     model.findMany({ where, orderBy, include, select, ...getPaginationArgs({ page, limit }) }),
     model.count({ where }),
@@ -212,15 +231,23 @@ const findByUuidOrThrow = async (model, uuid, options = {}) => {
 const getIdByUuid = async (model, uuid, label) => {
   if (!uuid) return null;
   const found = await model.findFirst({ where: { uuid, deletedAt: null }, select: { id: true } });
-  if (!found) throw ApiError.unprocessable(`${label} does not exist`, [{ field: `${label}Uuid`, code: 'NOT_FOUND', message: `${label} does not exist` }]);
+  if (!found)
+    throw ApiError.unprocessable(`${label} does not exist`, [
+      { field: `${label}Uuid`, code: 'NOT_FOUND', message: `${label} does not exist` },
+    ]);
   return found.id;
 };
 
-const readingMinutesFromContent = (content = '') => Math.max(1, Math.ceil(String(content).trim().split(/\s+/).filter(Boolean).length / 220));
+const readingMinutesFromContent = (content = '') =>
+  Math.max(1, Math.ceil(String(content).trim().split(/\s+/).filter(Boolean).length / 220));
 
 const buildCategoryData = async ({ body, model }) => {
-  const parentId = body.parentUuid === undefined ? undefined : await getIdByUuid(model, body.parentUuid, 'parent');
-  const slug = body.slug || body.name ? await buildUniqueSlug({ base: body.slug || body.name, model }) : undefined;
+  const parentId =
+    body.parentUuid === undefined ? undefined : await getIdByUuid(model, body.parentUuid, 'parent');
+  const slug =
+    body.slug || body.name
+      ? await buildUniqueSlug({ base: body.slug || body.name, model })
+      : undefined;
   return compactObject({
     parentId,
     name: body.name,
@@ -231,9 +258,22 @@ const buildCategoryData = async ({ body, model }) => {
 };
 
 const buildBlogPostData = async (body, existingUuid = null) => {
-  const categoryId = body.categoryUuid === undefined ? undefined : await getIdByUuid(prisma.blogCategory, body.categoryUuid, 'category');
-  const featuredImageId = body.featuredImageUuid === undefined ? undefined : await getIdByUuid(prisma.mediaAsset, body.featuredImageUuid, 'featuredImage');
-  const slug = body.slug || body.title ? await buildUniqueSlug({ base: body.slug || body.title, model: prisma.blogPost, existingUuid }) : undefined;
+  const categoryId =
+    body.categoryUuid === undefined
+      ? undefined
+      : await getIdByUuid(prisma.blogCategory, body.categoryUuid, 'category');
+  const featuredImageId =
+    body.featuredImageUuid === undefined
+      ? undefined
+      : await getIdByUuid(prisma.mediaAsset, body.featuredImageUuid, 'featuredImage');
+  const slug =
+    body.slug || body.title
+      ? await buildUniqueSlug({
+          base: body.slug || body.title,
+          model: prisma.blogPost,
+          existingUuid,
+        })
+      : undefined;
   const status = body.status;
   const sanitizedContent = body.content === undefined ? undefined : sanitizeRichHtml(body.content);
   return compactObject({
@@ -249,14 +289,22 @@ const buildBlogPostData = async (body, existingUuid = null) => {
     readingMinutes: sanitizedContent ? readingMinutesFromContent(sanitizedContent) : undefined,
     seoTitle: body.seoTitle,
     seoDescription: body.seoDescription,
-    publishedAt: body.publishedAt === undefined ? (status === 'PUBLISHED' ? new Date() : undefined) : body.publishedAt,
+    publishedAt:
+      body.publishedAt === undefined
+        ? status === 'PUBLISHED'
+          ? new Date()
+          : undefined
+        : body.publishedAt,
   });
 };
 
 const syncBlogTags = async (postId, tagUuids, client = prisma) => {
   if (!Array.isArray(tagUuids)) return;
   const tags = tagUuids.length
-    ? await client.blogTag.findMany({ where: { uuid: { in: tagUuids }, deletedAt: null }, select: { id: true, uuid: true } })
+    ? await client.blogTag.findMany({
+        where: { uuid: { in: tagUuids }, deletedAt: null },
+        select: { id: true, uuid: true },
+      })
     : [];
 
   if (tags.length !== tagUuids.length) {
@@ -265,14 +313,26 @@ const syncBlogTags = async (postId, tagUuids, client = prisma) => {
 
   await client.blogPostTag.deleteMany({ where: { postId } });
   if (tags.length) {
-    await client.blogPostTag.createMany({ data: tags.map((tag) => ({ postId, tagId: tag.id })), skipDuplicates: true });
+    await client.blogPostTag.createMany({
+      data: tags.map((tag) => ({ postId, tagId: tag.id })),
+      skipDuplicates: true,
+    });
   }
 };
 
 const buildProductData = async (body, existingUuid = null) => {
-  const categoryId = body.categoryUuid === undefined ? undefined : await getIdByUuid(prisma.productCategory, body.categoryUuid, 'category');
-  const brandId = body.brandUuid === undefined ? undefined : await getIdByUuid(prisma.productBrand, body.brandUuid, 'brand');
-  const slug = body.slug || body.name ? await buildUniqueSlug({ base: body.slug || body.name, model: prisma.product, existingUuid }) : undefined;
+  const categoryId =
+    body.categoryUuid === undefined
+      ? undefined
+      : await getIdByUuid(prisma.productCategory, body.categoryUuid, 'category');
+  const brandId =
+    body.brandUuid === undefined
+      ? undefined
+      : await getIdByUuid(prisma.productBrand, body.brandUuid, 'brand');
+  const slug =
+    body.slug || body.name
+      ? await buildUniqueSlug({ base: body.slug || body.name, model: prisma.product, existingUuid })
+      : undefined;
   const status = body.status;
   return compactObject({
     categoryId,
@@ -283,10 +343,14 @@ const buildProductData = async (body, existingUuid = null) => {
     barcode: body.barcode,
     stock: body.stock,
     unit: body.unit,
-    shortDescription: body.shortDescription === undefined ? undefined : normalizePlainText(body.shortDescription, 500),
+    shortDescription:
+      body.shortDescription === undefined
+        ? undefined
+        : normalizePlainText(body.shortDescription, 500),
     description: body.description === undefined ? undefined : sanitizeRichHtml(body.description),
     skinType: body.skinType === undefined ? undefined : normalizePlainText(body.skinType, 120),
-    ingredients: body.ingredients === undefined ? undefined : sanitizeRichHtml(body.ingredients, 10000),
+    ingredients:
+      body.ingredients === undefined ? undefined : sanitizeRichHtml(body.ingredients, 10000),
     howToUse: body.howToUse === undefined ? undefined : sanitizeRichHtml(body.howToUse, 10000),
     benefits: body.benefits === undefined ? undefined : sanitizeRichHtml(body.benefits, 10000),
     caution: body.caution === undefined ? undefined : sanitizeRichHtml(body.caution, 10000),
@@ -299,7 +363,12 @@ const buildProductData = async (body, existingUuid = null) => {
     sortOrder: body.sortOrder,
     seoTitle: body.seoTitle,
     seoDescription: body.seoDescription,
-    publishedAt: body.publishedAt === undefined ? (status === 'ACTIVE' ? new Date() : undefined) : body.publishedAt,
+    publishedAt:
+      body.publishedAt === undefined
+        ? status === 'ACTIVE'
+          ? new Date()
+          : undefined
+        : body.publishedAt,
     rawImportData: body.rawImportData,
   });
 };
@@ -307,7 +376,10 @@ const buildProductData = async (body, existingUuid = null) => {
 const syncProductCollections = async (productId, collectionUuids, client = prisma) => {
   if (!Array.isArray(collectionUuids)) return;
   const collections = collectionUuids.length
-    ? await client.productCollection.findMany({ where: { uuid: { in: collectionUuids }, deletedAt: null }, select: { id: true, uuid: true } })
+    ? await client.productCollection.findMany({
+        where: { uuid: { in: collectionUuids }, deletedAt: null },
+        select: { id: true, uuid: true },
+      })
     : [];
 
   if (collections.length !== collectionUuids.length) {
@@ -317,13 +389,15 @@ const syncProductCollections = async (productId, collectionUuids, client = prism
   await client.productCollectionItem.deleteMany({ where: { productId } });
   if (collections.length) {
     await client.productCollectionItem.createMany({
-      data: collections.map((collection, index) => ({ productId, collectionId: collection.id, sortOrder: index })),
+      data: collections.map((collection, index) => ({
+        productId,
+        collectionId: collection.id,
+        sortOrder: index,
+      })),
       skipDuplicates: true,
     });
   }
 };
-
-
 
 const syncProductImages = async (productId, images, client = prisma) => {
   if (!Array.isArray(images)) return;
@@ -341,30 +415,35 @@ const syncProductImages = async (productId, images, client = prisma) => {
         throw ApiError.unprocessable(validation.message || 'URL ảnh không hợp lệ');
       }
       const url = validation.url;
-      const asset = await client.mediaAsset.findFirst({
-        where: { secureUrl: url, deletedAt: null },
-        select: { uuid: true },
-      }) || await client.mediaAsset.create({
-        data: {
-          provider: 'LOCAL',
-          publicId: null,
-          originalName: url.split('/').pop()?.slice(0, 180) || 'image-url',
-          fileName: null,
-          mimeType: 'image/url',
-          sizeBytes: 0,
-          secureUrl: url,
-          altText: image.altText || null,
-          metadata: { source: 'url' },
-        },
-        select: { uuid: true },
-      });
+      const asset =
+        (await client.mediaAsset.findFirst({
+          where: { secureUrl: url, deletedAt: null },
+          select: { uuid: true },
+        })) ||
+        (await client.mediaAsset.create({
+          data: {
+            provider: 'LOCAL',
+            publicId: null,
+            originalName: url.split('/').pop()?.slice(0, 180) || 'image-url',
+            fileName: null,
+            mimeType: 'image/url',
+            sizeBytes: 0,
+            secureUrl: url,
+            altText: image.altText || null,
+            metadata: { source: 'url' },
+          },
+          select: { uuid: true },
+        }));
       normalized.push({ ...image, mediaAssetUuid: asset.uuid });
     }
   }
 
   const uuids = normalized.map((image) => image.mediaAssetUuid).filter(Boolean);
   const assets = uuids.length
-    ? await client.mediaAsset.findMany({ where: { uuid: { in: uuids }, deletedAt: null }, select: { id: true, uuid: true } })
+    ? await client.mediaAsset.findMany({
+        where: { uuid: { in: uuids }, deletedAt: null },
+        select: { id: true, uuid: true },
+      })
     : [];
 
   if (assets.length !== uuids.length) {
@@ -390,7 +469,9 @@ const syncProductImages = async (productId, images, client = prisma) => {
 const shouldUploadToCloudinary = () => {
   if (env.upload.driver !== 'cloudinary') return false;
   if (!isCloudinaryConfigured()) {
-    throw ApiError.badRequest('Cloudinary chưa được cấu hình. Vui lòng cấu hình CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET hoặc đổi UPLOAD_DRIVER=local.');
+    throw ApiError.badRequest(
+      'Cloudinary chưa được cấu hình. Vui lòng cấu hình CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET hoặc đổi UPLOAD_DRIVER=local.',
+    );
   }
   return true;
 };
@@ -428,21 +509,21 @@ const normalizeDecimalInput = (value) => {
   const lastDot = normalized.lastIndexOf('.');
 
   if (lastComma !== -1 && lastDot !== -1) {
-    normalized = lastComma > lastDot
-      ? normalized.replace(/\./g, '').replace(',', '.')
-      : normalized.replace(/,/g, '');
+    normalized =
+      lastComma > lastDot
+        ? normalized.replace(/\./g, '').replace(',', '.')
+        : normalized.replace(/,/g, '');
   } else if (lastComma !== -1) {
     const parts = normalized.split(',');
     const last = parts.at(-1) || '';
-    normalized = parts.length > 1 && last.length > 0 && last.length <= 2
-      ? `${parts.slice(0, -1).join('')}.${last}`
-      : normalized.replace(/,/g, '');
+    normalized =
+      parts.length > 1 && last.length > 0 && last.length <= 2
+        ? `${parts.slice(0, -1).join('')}.${last}`
+        : normalized.replace(/,/g, '');
   } else if (lastDot !== -1) {
     const parts = normalized.split('.');
     const last = parts.at(-1) || '';
-    normalized = parts.length > 2 || last.length === 3
-      ? normalized.replace(/\./g, '')
-      : normalized;
+    normalized = parts.length > 2 || last.length === 3 ? normalized.replace(/\./g, '') : normalized;
   }
 
   return /^\d+(\.\d{1,2})?$/.test(normalized) ? normalized : null;
@@ -451,11 +532,19 @@ const normalizeDecimalInput = (value) => {
 const parsePrice = (value, field, rowErrors) => {
   const normalized = normalizeDecimalInput(value);
   if (value === null || value === undefined || value === '') {
-    rowErrors.push({ field, code: 'REQUIRED', message: field === 'price' ? 'Giá bán là bắt buộc' : `${field} is required` });
+    rowErrors.push({
+      field,
+      code: 'REQUIRED',
+      message: field === 'price' ? 'Giá bán là bắt buộc' : `${field} is required`,
+    });
     return null;
   }
   if (!normalized) {
-    rowErrors.push({ field, code: 'INVALID_PRICE', message: 'Giá bán phải là số hợp lệ, ví dụ 100000, 100,000 hoặc 100.000' });
+    rowErrors.push({
+      field,
+      code: 'INVALID_PRICE',
+      message: 'Giá bán phải là số hợp lệ, ví dụ 100000, 100,000 hoặc 100.000',
+    });
     return null;
   }
   return normalized;
@@ -473,26 +562,40 @@ const parseOptionalPrice = (value, field, rowErrors) => {
 
 const parseStock = (value, rowErrors, rowWarnings) => {
   if (value === null || value === undefined || value === '') {
-    rowWarnings.push({ field: 'stock', code: 'BLANK_STOCK', message: 'Tồn kho đang trống. Khi cập nhật SKU cũ hệ thống sẽ giữ tồn kho cũ; khi tạo mới sẽ lưu 0.' });
+    rowWarnings.push({
+      field: 'stock',
+      code: 'BLANK_STOCK',
+      message:
+        'Tồn kho đang trống. Khi cập nhật SKU cũ hệ thống sẽ giữ tồn kho cũ; khi tạo mới sẽ lưu 0.',
+    });
     return null;
   }
   if (typeof value === 'number') {
     if (Number.isInteger(value) && value >= 0) return value;
-    rowErrors.push({ field: 'stock', code: 'INVALID_STOCK', message: 'Tồn kho phải là số nguyên không âm' });
+    rowErrors.push({
+      field: 'stock',
+      code: 'INVALID_STOCK',
+      message: 'Tồn kho phải là số nguyên không âm',
+    });
     return null;
   }
   const normalized = String(value).trim().replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '');
   if (!/^\d+$/.test(normalized)) {
-    rowErrors.push({ field: 'stock', code: 'INVALID_STOCK', message: 'Tồn kho phải là số nguyên không âm' });
+    rowErrors.push({
+      field: 'stock',
+      code: 'INVALID_STOCK',
+      message: 'Tồn kho phải là số nguyên không âm',
+    });
     return null;
   }
   return Number(normalized);
 };
 
-const splitCategoryPath = (value) => String(value || '')
-  .split(/[>\/\\|;]+/)
-  .map((item) => item.trim())
-  .filter(Boolean);
+const splitCategoryPath = (value) =>
+  String(value || '')
+    .split(/[>\/\\|;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 const ensureProductCategoryPath = async (tx, categoryPath) => {
   const parts = Array.isArray(categoryPath) ? categoryPath : splitCategoryPath(categoryPath);
@@ -526,14 +629,22 @@ const parseImageUrls = (value, rowWarnings) => {
     const validation = validateRemoteImageUrl(url);
     if (!validation.ok) {
       invalidCount += 1;
-      rowWarnings.push({ field: 'images', code: validation.code || 'INVALID_IMAGE_URL', message: validation.message });
+      rowWarnings.push({
+        field: 'images',
+        code: validation.code || 'INVALID_IMAGE_URL',
+        message: validation.message,
+      });
       continue;
     }
     if (!accepted.includes(validation.url)) accepted.push(validation.url);
   }
 
   if (invalidCount > 0) {
-    rowWarnings.push({ field: 'images', code: 'SOME_IMAGE_URLS_SKIPPED', message: 'Một số URL ảnh không hợp lệ đã bị bỏ qua' });
+    rowWarnings.push({
+      field: 'images',
+      code: 'SOME_IMAGE_URLS_SKIPPED',
+      message: 'Một số URL ảnh không hợp lệ đã bị bỏ qua',
+    });
   }
 
   return accepted;
@@ -544,8 +655,10 @@ const parseKiotBoolean = (value, fallback = null) => {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
   const text = String(value).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y', 'co', 'có', 'dang kinh doanh', 'active', 'x'].includes(text)) return true;
-  if (['0', 'false', 'no', 'n', 'khong', 'không', 'inactive', 'ngung', 'ngừng'].includes(text)) return false;
+  if (['1', 'true', 'yes', 'y', 'co', 'có', 'dang kinh doanh', 'active', 'x'].includes(text))
+    return true;
+  if (['0', 'false', 'no', 'n', 'khong', 'không', 'inactive', 'ngung', 'ngừng'].includes(text))
+    return false;
   return fallback;
 };
 
@@ -564,7 +677,16 @@ const excelSerialToIsoDate = (value) => {
   if (typeof value !== 'number' || value < 1) return value;
   const parsed = XLSX.SSF.parse_date_code(value);
   if (!parsed) return value;
-  const date = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, Math.floor(parsed.S || 0)));
+  const date = new Date(
+    Date.UTC(
+      parsed.y,
+      parsed.m - 1,
+      parsed.d,
+      parsed.H || 0,
+      parsed.M || 0,
+      Math.floor(parsed.S || 0),
+    ),
+  );
   return Number.isNaN(date.getTime()) ? value : date.toISOString();
 };
 
@@ -582,13 +704,39 @@ const KIOT_COLUMN_ALIASES = {
   sku: ['sku', 'SKU', 'Mã hàng', 'Ma hang', 'Mã sản phẩm', 'Ma san pham'],
   barcode: ['barcode', 'Barcode', 'Mã vạch', 'Ma vach'],
   name: ['name', 'Name', 'Tên sản phẩm', 'Tên hàng', 'Ten san pham', 'Ten hang'],
-  category: ['category', 'Category', 'Danh mục', 'Nhóm hàng', 'Nhóm hàng(3 Cấp)', 'Nhóm hàng (3 Cấp)', 'Nhom hang', 'Nhom hang 3 cap'],
+  category: [
+    'category',
+    'Category',
+    'Danh mục',
+    'Nhóm hàng',
+    'Nhóm hàng(3 Cấp)',
+    'Nhóm hàng (3 Cấp)',
+    'Nhom hang',
+    'Nhom hang 3 cap',
+  ],
   brand: ['brand', 'Brand', 'Thương hiệu', 'Thuong hieu'],
   price: ['price', 'Price', 'Giá', 'Giá bán', 'Gia', 'Gia ban'],
-  compareAtPrice: ['compareAtPrice', 'compare_at_price', 'Giá cũ', 'Giá niêm yết', 'Gia cu', 'Gia niem yet'],
+  compareAtPrice: [
+    'compareAtPrice',
+    'compare_at_price',
+    'Giá cũ',
+    'Giá niêm yết',
+    'Gia cu',
+    'Gia niem yet',
+  ],
   stock: ['stock', 'Stock', 'Tồn kho', 'Ton kho'],
   unit: ['unit', 'Unit', 'ĐVT', 'DVT', 'Đơn vị tính', 'Don vi tinh'],
-  images: ['imageUrls', 'image_urls', 'Ảnh', 'Hình ảnh', 'Hình ảnh (url1,url2...)', 'Hình ảnh (url1, url2...)', 'Hinh anh', 'Hinh anh url1 url2', 'Anh'],
+  images: [
+    'imageUrls',
+    'image_urls',
+    'Ảnh',
+    'Hình ảnh',
+    'Hình ảnh (url1,url2...)',
+    'Hình ảnh (url1, url2...)',
+    'Hinh anh',
+    'Hinh anh url1 url2',
+    'Anh',
+  ],
   shortDescription: ['shortDescription', 'short_description', 'Mô tả ngắn', 'Mo ta ngan'],
   description: ['description', 'Description', 'Mô tả', 'Mo ta'],
   benefits: ['benefits', 'Benefits', 'Công dụng', 'Cong dung', 'Lợi ích', 'Loi ich'],
@@ -601,14 +749,28 @@ const KIOT_COLUMN_ALIASES = {
 const validateImportHeaders = (rows) => {
   const errors = [];
   if (!rows.length) {
-    errors.push({ row: null, field: 'file', code: 'EMPTY_FILE', message: 'File không có dòng dữ liệu sản phẩm' });
+    errors.push({
+      row: null,
+      field: 'file',
+      code: 'EMPTY_FILE',
+      message: 'File không có dòng dữ liệu sản phẩm',
+    });
     return errors;
   }
 
   const first = rows[0] || {};
-  for (const [field, aliases] of Object.entries({ sku: KIOT_COLUMN_ALIASES.sku, name: KIOT_COLUMN_ALIASES.name, price: KIOT_COLUMN_ALIASES.price })) {
+  for (const [field, aliases] of Object.entries({
+    sku: KIOT_COLUMN_ALIASES.sku,
+    name: KIOT_COLUMN_ALIASES.name,
+    price: KIOT_COLUMN_ALIASES.price,
+  })) {
     if (!hasColumn(first, aliases)) {
-      errors.push({ row: null, field, code: 'MISSING_COLUMN', message: `File thiếu cột bắt buộc: ${field === 'sku' ? 'Mã hàng' : field === 'name' ? 'Tên hàng' : 'Giá bán'}` });
+      errors.push({
+        row: null,
+        field,
+        code: 'MISSING_COLUMN',
+        message: `File thiếu cột bắt buộc: ${field === 'sku' ? 'Mã hàng' : field === 'name' ? 'Tên hàng' : 'Giá bán'}`,
+      });
     }
   }
   return errors;
@@ -643,12 +805,21 @@ const parseKiotRowsFromRaw = async (rawRows) => {
     const sku = readImportText(raw, KIOT_COLUMN_ALIASES.sku);
     const barcode = readImportText(raw, KIOT_COLUMN_ALIASES.barcode);
     const price = parsePrice(pickCell(raw, KIOT_COLUMN_ALIASES.price), 'price', rowErrors);
-    const compareAtPrice = parseOptionalPrice(pickCell(raw, KIOT_COLUMN_ALIASES.compareAtPrice), 'compareAtPrice', rowErrors);
+    const compareAtPrice = parseOptionalPrice(
+      pickCell(raw, KIOT_COLUMN_ALIASES.compareAtPrice),
+      'compareAtPrice',
+      rowErrors,
+    );
     const stock = parseStock(pickCell(raw, KIOT_COLUMN_ALIASES.stock), rowErrors, rowWarnings);
     const imageUrls = parseImageUrls(pickCell(raw, KIOT_COLUMN_ALIASES.images), rowWarnings);
     const normalizedSku = sku || '';
 
-    if (!normalizedSku) rowErrors.push({ field: 'sku', code: 'REQUIRED', message: 'Mã hàng là bắt buộc để upsert sản phẩm' });
+    if (!normalizedSku)
+      rowErrors.push({
+        field: 'sku',
+        code: 'REQUIRED',
+        message: 'Mã hàng là bắt buộc để upsert sản phẩm',
+      });
     if (normalizedSku) skuCounts.set(normalizedSku, (skuCounts.get(normalizedSku) || 0) + 1);
     if (!name) rowErrors.push({ field: 'name', code: 'REQUIRED', message: 'Tên hàng là bắt buộc' });
 
@@ -681,18 +852,30 @@ const parseKiotRowsFromRaw = async (rawRows) => {
       benefits: readImportText(raw, KIOT_COLUMN_ALIASES.benefits),
       caution: readImportText(raw, KIOT_COLUMN_ALIASES.caution),
       compareAtPrice,
-      currency: String(pickCell(raw, ['currency', 'Currency', 'Tiền tệ', 'Tien te']) || 'VND').trim().toUpperCase().slice(0, 3),
-      isFeatured: parseKiotBoolean(pickCell(raw, ['isFeatured', 'is_featured', 'Nổi bật', 'Noi bat']), false),
+      currency: String(pickCell(raw, ['currency', 'Currency', 'Tiền tệ', 'Tien te']) || 'VND')
+        .trim()
+        .toUpperCase()
+        .slice(0, 3),
+      isFeatured: parseKiotBoolean(
+        pickCell(raw, ['isFeatured', 'is_featured', 'Nổi bật', 'Noi bat']),
+        false,
+      ),
       warnings: rowWarnings,
       errors: rowErrors,
       rawImportData: { ...normalizedRaw, imageUrls },
     });
   });
 
-  const duplicateSkus = new Set([...skuCounts.entries()].filter(([, count]) => count > 1).map(([sku]) => sku));
+  const duplicateSkus = new Set(
+    [...skuCounts.entries()].filter(([, count]) => count > 1).map(([sku]) => sku),
+  );
   for (const row of rows) {
     if (row.sku && duplicateSkus.has(row.sku)) {
-      row.errors.push({ field: 'sku', code: 'DUPLICATE_IN_FILE', message: `Mã hàng bị trùng trong file: ${row.sku}. Vì an toàn, tất cả dòng trùng SKU này sẽ không được import.` });
+      row.errors.push({
+        field: 'sku',
+        code: 'DUPLICATE_IN_FILE',
+        message: `Mã hàng bị trùng trong file: ${row.sku}. Vì an toàn, tất cả dòng trùng SKU này sẽ không được import.`,
+      });
     }
     setImportRowStatus(row);
   }
@@ -707,11 +890,16 @@ const parseProductImportFile = async (filePath) => {
     const fileBuffer = await fs.readFile(filePath);
     workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: false });
   } catch (error) {
-    throw ApiError.badRequest('File Excel không đọc được. Vui lòng kiểm tra đúng định dạng .xlsx chuẩn');
+    throw ApiError.badRequest(
+      'File Excel không đọc được. Vui lòng kiểm tra đúng định dạng .xlsx chuẩn',
+    );
   }
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) throw ApiError.badRequest('File Excel không có worksheet');
-  const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: null, raw: true });
+  const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+    defval: null,
+    raw: true,
+  });
   return parseKiotRowsFromRaw(rawRows);
 };
 
@@ -719,23 +907,30 @@ const enrichImportRowsWithDatabaseWarnings = async (rows) => {
   const skus = rows.map((row) => row.sku).filter(Boolean);
   const barcodes = rows.map((row) => row.barcode).filter(Boolean);
   const [existingBySku, existingByBarcode] = await Promise.all([
-    skus.length ? prisma.product.findMany({
-      where: { sku: { in: skus }, deletedAt: null },
-      select: {
-        id: true,
-        sku: true,
-        barcode: true,
-        name: true,
-        description: true,
-        benefits: true,
-        howToUse: true,
-        skinType: true,
-        ingredients: true,
-        caution: true,
-        _count: { select: { images: true } },
-      },
-    }) : [],
-    barcodes.length ? prisma.product.findMany({ where: { barcode: { in: barcodes }, deletedAt: null }, select: { sku: true, barcode: true, name: true } }) : [],
+    skus.length
+      ? prisma.product.findMany({
+          where: { sku: { in: skus }, deletedAt: null },
+          select: {
+            id: true,
+            sku: true,
+            barcode: true,
+            name: true,
+            description: true,
+            benefits: true,
+            howToUse: true,
+            skinType: true,
+            ingredients: true,
+            caution: true,
+            _count: { select: { images: true } },
+          },
+        })
+      : [],
+    barcodes.length
+      ? prisma.product.findMany({
+          where: { barcode: { in: barcodes }, deletedAt: null },
+          select: { sku: true, barcode: true, name: true },
+        })
+      : [],
   ]);
 
   const skuMap = new Map(existingBySku.map((item) => [item.sku, item]));
@@ -745,28 +940,52 @@ const enrichImportRowsWithDatabaseWarnings = async (rows) => {
     if (existing) {
       row.existingProductName = existing.name;
       if (!row.errors?.length) row.action = 'UPDATE';
-      row.warnings.push({ field: 'sku', code: 'UPDATE_EXISTING_PRODUCT', message: `SKU ${row.sku} đã tồn tại. Khi import sẽ cập nhật sản phẩm cũ: ${existing.name}` });
+      row.warnings.push({
+        field: 'sku',
+        code: 'UPDATE_EXISTING_PRODUCT',
+        message: `SKU ${row.sku} đã tồn tại. Khi import sẽ cập nhật sản phẩm cũ: ${existing.name}`,
+      });
 
       for (const field of IMPORTANT_IMPORT_FIELDS) {
         const label = IMPORTANT_IMPORT_FIELD_LABELS[field] || field;
         if (!hasImportValue(row[field]) && hasImportValue(existing[field])) {
-          row.warnings.push({ field, code: 'KEEP_EXISTING_VALUE', message: `SKU ${row.sku} đã tồn tại. Cột ${label} đang trống nên hệ thống sẽ giữ dữ liệu cũ.` });
+          row.warnings.push({
+            field,
+            code: 'KEEP_EXISTING_VALUE',
+            message: `SKU ${row.sku} đã tồn tại. Cột ${label} đang trống nên hệ thống sẽ giữ dữ liệu cũ.`,
+          });
         } else if (hasImportValue(row[field]) && hasImportValue(existing[field])) {
-          row.warnings.push({ field, code: 'WILL_UPDATE_IMPORTANT_VALUE', message: `SKU ${row.sku} đã tồn tại. Cột ${label} có dữ liệu trong file nên sẽ cập nhật dữ liệu cũ.` });
+          row.warnings.push({
+            field,
+            code: 'WILL_UPDATE_IMPORTANT_VALUE',
+            message: `SKU ${row.sku} đã tồn tại. Cột ${label} có dữ liệu trong file nên sẽ cập nhật dữ liệu cũ.`,
+          });
         }
       }
 
       if (!row.imageUrls?.length && existing._count?.images > 0) {
-        row.warnings.push({ field: 'images', code: 'KEEP_EXISTING_IMAGES', message: `SKU ${row.sku} đã tồn tại. Cột Hình ảnh đang trống nên hệ thống sẽ giữ ảnh cũ.` });
+        row.warnings.push({
+          field: 'images',
+          code: 'KEEP_EXISTING_IMAGES',
+          message: `SKU ${row.sku} đã tồn tại. Cột Hình ảnh đang trống nên hệ thống sẽ giữ ảnh cũ.`,
+        });
       } else if (row.imageUrls?.length && existing._count?.images > 0) {
-        row.warnings.push({ field: 'images', code: 'WILL_REPLACE_IMAGES', message: `SKU ${row.sku} đã tồn tại. File có ảnh mới nên hệ thống sẽ thay bộ ảnh sản phẩm hiện tại.` });
+        row.warnings.push({
+          field: 'images',
+          code: 'WILL_REPLACE_IMAGES',
+          message: `SKU ${row.sku} đã tồn tại. File có ảnh mới nên hệ thống sẽ thay bộ ảnh sản phẩm hiện tại.`,
+        });
       }
     } else if (!row.errors?.length) {
       row.action = 'NEW';
     }
 
     if (row.barcode && barcodeMap.has(row.barcode) && barcodeMap.get(row.barcode).sku !== row.sku) {
-      row.errors.push({ field: 'barcode', code: 'BARCODE_USED_BY_OTHER_SKU', message: `Mã vạch đang thuộc mã hàng khác: ${barcodeMap.get(row.barcode).sku || 'không có SKU'}` });
+      row.errors.push({
+        field: 'barcode',
+        code: 'BARCODE_USED_BY_OTHER_SKU',
+        message: `Mã vạch đang thuộc mã hàng khác: ${barcodeMap.get(row.barcode).sku || 'không có SKU'}`,
+      });
     }
     setImportRowStatus(row);
   }
@@ -799,8 +1018,12 @@ const buildPreviewPayload = (job, parsed) => {
   const invalidRows = parsed.rows.filter((row) => row.errors.length).length;
   const warningRows = parsed.rows.filter((row) => !row.errors.length && row.warnings.length).length;
   const newRows = parsed.rows.filter((row) => row.action === 'NEW' && !row.errors.length).length;
-  const updateRows = parsed.rows.filter((row) => row.action === 'UPDATE' && !row.errors.length).length;
-  const duplicateRows = parsed.rows.filter((row) => row.errors.some((error) => error.code === 'DUPLICATE_IN_FILE')).length;
+  const updateRows = parsed.rows.filter(
+    (row) => row.action === 'UPDATE' && !row.errors.length,
+  ).length;
+  const duplicateRows = parsed.rows.filter((row) =>
+    row.errors.some((error) => error.code === 'DUPLICATE_IN_FILE'),
+  ).length;
   return {
     importJobId: job.uuid,
     filename: job.originalName,
@@ -834,7 +1057,11 @@ const createImportRows = async (tx, jobId, rows) => {
       rowNumber: row.rowNumber,
       sku: row.sku,
       status: row.status || (row.errors.length ? 'INVALID' : 'VALID'),
-      message: row.errors.length ? row.errors.map((error) => error.message).join('; ') : row.warnings.length ? row.warnings.map((warning) => warning.message).join('; ') : null,
+      message: row.errors.length
+        ? row.errors.map((error) => error.message).join('; ')
+        : row.warnings.length
+          ? row.warnings.map((warning) => warning.message).join('; ')
+          : null,
       warnings: row.warnings,
       errors: row.errors,
       rawData: row.rawImportData,
@@ -852,7 +1079,9 @@ const buildCreateProductDataFromImport = async (tx, row, categoryId, brandId) =>
   stock: row.stock ?? 0,
   unit: row.unit || null,
   rawImportData: row.rawImportData,
-  shortDescription: hasImportValue(row.shortDescription) ? normalizePlainText(row.shortDescription, 500) : null,
+  shortDescription: hasImportValue(row.shortDescription)
+    ? normalizePlainText(row.shortDescription, 500)
+    : null,
   description: hasImportValue(row.description) ? sanitizeRichHtml(row.description) : null,
   ingredients: hasImportValue(row.ingredients) ? sanitizeRichHtml(row.ingredients, 10000) : null,
   howToUse: hasImportValue(row.howToUse) ? sanitizeRichHtml(row.howToUse, 10000) : null,
@@ -884,8 +1113,10 @@ const buildUpdateProductDataFromImport = (row, categoryId, brandId) => {
   if (hasImportValue(row.brandName)) data.brandId = brandId;
   if (row.stock !== null && row.stock !== undefined) data.stock = row.stock;
   if (hasImportValue(row.unit)) data.unit = row.unit;
-  if (row.compareAtPrice !== null && row.compareAtPrice !== undefined) data.compareAtPrice = row.compareAtPrice;
-  if (hasImportValue(row.shortDescription)) data.shortDescription = normalizePlainText(row.shortDescription, 500);
+  if (row.compareAtPrice !== null && row.compareAtPrice !== undefined)
+    data.compareAtPrice = row.compareAtPrice;
+  if (hasImportValue(row.shortDescription))
+    data.shortDescription = normalizePlainText(row.shortDescription, 500);
   if (hasImportValue(row.description)) data.description = sanitizeRichHtml(row.description);
   if (hasImportValue(row.ingredients)) data.ingredients = sanitizeRichHtml(row.ingredients, 10000);
   if (hasImportValue(row.howToUse)) data.howToUse = sanitizeRichHtml(row.howToUse, 10000);
@@ -914,16 +1145,29 @@ const upsertProductFromImportRow = async (tx, row) => {
     brandId = brand.id;
   }
 
-  const existingProduct = await tx.product.findUnique({ where: { sku: row.sku }, select: { id: true } });
+  const existingProduct = await tx.product.findUnique({
+    where: { sku: row.sku },
+    select: { id: true },
+  });
   const product = existingProduct
-    ? await tx.product.update({ where: { id: existingProduct.id }, data: buildUpdateProductDataFromImport(row, categoryId, brandId) })
-    : await tx.product.create({ data: await buildCreateProductDataFromImport(tx, row, categoryId, brandId) });
+    ? await tx.product.update({
+        where: { id: existingProduct.id },
+        data: buildUpdateProductDataFromImport(row, categoryId, brandId),
+      })
+    : await tx.product.create({
+        data: await buildCreateProductDataFromImport(tx, row, categoryId, brandId),
+      });
 
   if (row.imageUrls.length) {
     await syncProductImages(
       product.id,
-      row.imageUrls.map((url, index) => ({ url, altText: row.name, sortOrder: index, isPrimary: index === 0 })),
-      tx
+      row.imageUrls.map((url, index) => ({
+        url,
+        altText: row.name,
+        sortOrder: index,
+        isPrimary: index === 0,
+      })),
+      tx,
     );
   }
 
@@ -939,24 +1183,76 @@ export const adminService = {
       orderBy: [{ category: { name: 'asc' } }, { name: 'asc' }],
       include: { category: { select: { name: true } }, brand: { select: { name: true } } },
     });
-    const headers = ['Mã hàng', 'Mã vạch', 'Tên sản phẩm', 'Danh mục', 'Thương hiệu', 'Trạng thái', 'Tồn kho', 'Đơn vị', 'Giá bán', 'Giá so sánh', 'Giá trị tồn kho', 'Tiền tệ', 'Cập nhật lúc'];
+    const headers = [
+      'Mã hàng',
+      'Mã vạch',
+      'Tên sản phẩm',
+      'Danh mục',
+      'Thương hiệu',
+      'Trạng thái',
+      'Tồn kho',
+      'Đơn vị',
+      'Giá bán',
+      'Giá so sánh',
+      'Giá trị tồn kho',
+      'Tiền tệ',
+      'Cập nhật lúc',
+    ];
     const rows = products.map((product) => {
       const price = Number(product.price?.toString?.() || 0);
-      const compareAtPrice = product.compareAtPrice === null ? null : Number(product.compareAtPrice?.toString?.() || 0);
-      return [product.sku || '', product.barcode || '', product.name, product.category?.name || '', product.brand?.name || '', product.status, product.stock, product.unit || '', price, compareAtPrice, product.stock * price, product.currency, product.updatedAt];
+      const compareAtPrice =
+        product.compareAtPrice === null ? null : Number(product.compareAtPrice?.toString?.() || 0);
+      return [
+        product.sku || '',
+        product.barcode || '',
+        product.name,
+        product.category?.name || '',
+        product.brand?.name || '',
+        product.status,
+        product.stock,
+        product.unit || '',
+        price,
+        compareAtPrice,
+        product.stock * price,
+        product.currency,
+        product.updatedAt,
+      ];
     });
     const workbook = XLSX.utils.book_new();
-    workbook.Props = { Title: 'Kho hàng hiện có - Midi Cosmetics', Author: 'Midi Cosmetics Admin', CreatedDate: new Date() };
+    workbook.Props = {
+      Title: 'Kho hàng hiện có - Midi Cosmetics',
+      Author: 'Midi Cosmetics Admin',
+      CreatedDate: new Date(),
+    };
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows], { cellDates: true });
-    worksheet['!cols'] = [{ wch: 18 }, { wch: 18 }, { wch: 42 }, { wch: 24 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 20 }, { wch: 10 }, { wch: 21 }];
+    worksheet['!cols'] = [
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 42 },
+      { wch: 24 },
+      { wch: 22 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 20 },
+      { wch: 10 },
+      { wch: 21 },
+    ];
     worksheet['!autofilter'] = { ref: `A1:M${Math.max(rows.length + 1, 1)}` };
     worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
     for (let row = 2; row <= rows.length + 1; row += 1) {
-      for (const column of ['I', 'J', 'K']) if (worksheet[`${column}${row}`]) worksheet[`${column}${row}`].z = '#,##0 [$₫-vi-VN]';
+      for (const column of ['I', 'J', 'K'])
+        if (worksheet[`${column}${row}`]) worksheet[`${column}${row}`].z = '#,##0 [$₫-vi-VN]';
       if (worksheet[`M${row}`]) worksheet[`M${row}`].z = 'dd/mm/yyyy hh:mm';
     }
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Kho hàng');
-    return { filename: PRODUCT_INVENTORY_EXPORT_FILENAME, contentType: XLSX_CONTENT_TYPE, buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx', compression: true }) };
+    return {
+      filename: PRODUCT_INVENTORY_EXPORT_FILENAME,
+      contentType: XLSX_CONTENT_TYPE,
+      buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx', compression: true }),
+    };
   },
 
   async getProductImportTemplate() {
@@ -968,9 +1264,14 @@ export const adminService = {
       CreatedDate: new Date(),
     };
 
-    const dataRows = [KIOT_IMPORT_TEMPLATE_COLUMNS, KIOT_IMPORT_TEMPLATE_COLUMNS.map((column) => KIOT_IMPORT_TEMPLATE_SAMPLE_ROW[column] ?? '')];
+    const dataRows = [
+      KIOT_IMPORT_TEMPLATE_COLUMNS,
+      KIOT_IMPORT_TEMPLATE_COLUMNS.map((column) => KIOT_IMPORT_TEMPLATE_SAMPLE_ROW[column] ?? ''),
+    ];
     const worksheet = XLSX.utils.aoa_to_sheet(dataRows);
-    worksheet['!cols'] = KIOT_IMPORT_TEMPLATE_COLUMNS.map((column) => ({ wch: Math.min(Math.max(column.length + 4, 14), 36) }));
+    worksheet['!cols'] = KIOT_IMPORT_TEMPLATE_COLUMNS.map((column) => ({
+      wch: Math.min(Math.max(column.length + 4, 14), 36),
+    }));
     worksheet['!freeze'] = { xSplit: 0, ySplit: 1 };
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Import sản phẩm');
 
@@ -978,9 +1279,18 @@ export const adminService = {
       ['Hướng dẫn', 'Giá trị'],
       ['SKU / Mã hàng', 'Bắt buộc. SKU là khóa upsert: SKU mới sẽ tạo mới, SKU cũ sẽ cập nhật.'],
       ['Cột tư vấn', 'Mô tả, Công dụng, Cách sử dụng, Loại da phù hợp, Thành phần, Lưu ý sử dụng.'],
-      ['Khi cập nhật SKU cũ', 'Nếu cột tư vấn hoặc hình ảnh để trống, hệ thống giữ dữ liệu cũ và hiển thị cảnh báo ở preview.'],
-      ['Trùng SKU trong cùng file', 'Tất cả dòng trùng SKU trong file sẽ bị chặn để tránh ghi đè nhầm.'],
-      ['Ảnh', 'Nhập URL https hoặc http hợp lệ, nhiều ảnh phân tách bằng dấu phẩy, chấm phẩy hoặc xuống dòng.'],
+      [
+        'Khi cập nhật SKU cũ',
+        'Nếu cột tư vấn hoặc hình ảnh để trống, hệ thống giữ dữ liệu cũ và hiển thị cảnh báo ở preview.',
+      ],
+      [
+        'Trùng SKU trong cùng file',
+        'Tất cả dòng trùng SKU trong file sẽ bị chặn để tránh ghi đè nhầm.',
+      ],
+      [
+        'Ảnh',
+        'Nhập URL https hoặc http hợp lệ, nhiều ảnh phân tách bằng dấu phẩy, chấm phẩy hoặc xuống dòng.',
+      ],
     ];
     const guideSheet = XLSX.utils.aoa_to_sheet(guideRows);
     guideSheet['!cols'] = [{ wch: 28 }, { wch: 100 }];
@@ -994,25 +1304,77 @@ export const adminService = {
   },
 
   async getDashboard() {
-    const [posts, products, media, imports, recentPosts, recentProducts, activeProducts, publishedPosts, featuredProducts, featuredPosts, latestImport] = await Promise.all([
-      prisma.blogPost.groupBy({ by: ['status'], where: { deletedAt: null }, _count: { _all: true } }),
-      prisma.product.groupBy({ by: ['status'], where: { deletedAt: null }, _count: { _all: true } }),
+    const [
+      posts,
+      products,
+      media,
+      imports,
+      recentPosts,
+      recentProducts,
+      activeProducts,
+      publishedPosts,
+      featuredProducts,
+      featuredPosts,
+      latestImport,
+    ] = await Promise.all([
+      prisma.blogPost.groupBy({
+        by: ['status'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      }),
+      prisma.product.groupBy({
+        by: ['status'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      }),
       prisma.mediaAsset.count({ where: { deletedAt: null } }),
-      prisma.importJob.groupBy({ by: ['status'], where: { deletedAt: null }, _count: { _all: true } }),
-      prisma.blogPost.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 5, include: postInclude }),
-      prisma.product.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 5, include: productInclude }),
+      prisma.importJob.groupBy({
+        by: ['status'],
+        where: { deletedAt: null },
+        _count: { _all: true },
+      }),
+      prisma.blogPost.findMany({
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: postInclude,
+      }),
+      prisma.product.findMany({
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: productInclude,
+      }),
       prisma.product.count({ where: { deletedAt: null, status: 'ACTIVE' } }),
       prisma.blogPost.count({ where: { deletedAt: null, status: 'PUBLISHED' } }),
       prisma.product.count({ where: { deletedAt: null, status: 'ACTIVE', isFeatured: true } }),
       prisma.blogPost.count({ where: { deletedAt: null, status: 'PUBLISHED', isFeatured: true } }),
-      prisma.importJob.findFirst({ where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, select: { uuid: true, originalName: true, status: true, totalRows: true, successRows: true, failedRows: true, createdAt: true } }),
+      prisma.importJob.findFirst({
+        where: { deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          uuid: true,
+          originalName: true,
+          status: true,
+          totalRows: true,
+          successRows: true,
+          failedRows: true,
+          createdAt: true,
+        },
+      }),
     ]);
 
     return {
       counters: {
         postsByStatus: posts.reduce((acc, row) => ({ ...acc, [row.status]: row._count._all }), {}),
-        productsByStatus: products.reduce((acc, row) => ({ ...acc, [row.status]: row._count._all }), {}),
-        importJobsByStatus: imports.reduce((acc, row) => ({ ...acc, [row.status]: row._count._all }), {}),
+        productsByStatus: products.reduce(
+          (acc, row) => ({ ...acc, [row.status]: row._count._all }),
+          {},
+        ),
+        importJobsByStatus: imports.reduce(
+          (acc, row) => ({ ...acc, [row.status]: row._count._all }),
+          {},
+        ),
         mediaAssets: media,
         activeProducts,
         publishedPosts,
@@ -1029,7 +1391,10 @@ export const adminService = {
     const { page, limit, search, includeDeleted } = query;
     return listWithPagination({
       model,
-      where: { ...(includeDeleted ? {} : { deletedAt: null }), ...buildSearchWhere(['name', 'slug', 'description'], search) },
+      where: {
+        ...(includeDeleted ? {} : { deletedAt: null }),
+        ...buildSearchWhere(['name', 'slug', 'description'], search),
+      },
       page,
       limit,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
@@ -1047,7 +1412,8 @@ export const adminService = {
     const model = type === 'blog' ? prisma.blogCategory : prisma.productCategory;
     const current = await findByUuidOrThrow(model, uuid);
     const data = await buildCategoryData({ body, model });
-    if (data.parentId && data.parentId === current.id) throw ApiError.badRequest('Category cannot be its own parent');
+    if (data.parentId && data.parentId === current.id)
+      throw ApiError.badRequest('Category cannot be its own parent');
     return model.update({ where: { id: current.id }, data, select: categorySelect });
   },
 
@@ -1062,7 +1428,10 @@ export const adminService = {
     const { page, limit, search, includeDeleted } = query;
     return listWithPagination({
       model: prisma.blogTag,
-      where: { ...(includeDeleted ? {} : { deletedAt: null }), ...buildSearchWhere(['name', 'slug'], search) },
+      where: {
+        ...(includeDeleted ? {} : { deletedAt: null }),
+        ...buildSearchWhere(['name', 'slug'], search),
+      },
       page,
       limit,
       orderBy: { name: 'asc' },
@@ -1077,8 +1446,19 @@ export const adminService = {
 
   async updateTag(uuid, body) {
     const current = await findByUuidOrThrow(prisma.blogTag, uuid);
-    const slug = body.slug || body.name ? await buildUniqueSlug({ base: body.slug || body.name, model: prisma.blogTag, existingUuid: uuid }) : undefined;
-    return prisma.blogTag.update({ where: { id: current.id }, data: compactObject({ name: body.name, slug }), select: tagSelect });
+    const slug =
+      body.slug || body.name
+        ? await buildUniqueSlug({
+            base: body.slug || body.name,
+            model: prisma.blogTag,
+            existingUuid: uuid,
+          })
+        : undefined;
+    return prisma.blogTag.update({
+      where: { id: current.id },
+      data: compactObject({ name: body.name, slug }),
+      select: tagSelect,
+    });
   },
 
   async deleteTag(uuid) {
@@ -1091,7 +1471,11 @@ export const adminService = {
     const { page, limit, search, status, includeDeleted } = query;
     return listWithPagination({
       model: prisma.blogPost,
-      where: { ...(includeDeleted ? {} : { deletedAt: null }), ...(status ? { status } : {}), ...buildSearchWhere(['title', 'slug', 'excerpt'], search) },
+      where: {
+        ...(includeDeleted ? {} : { deletedAt: null }),
+        ...(status ? { status } : {}),
+        ...buildSearchWhere(['title', 'slug', 'excerpt'], search),
+      },
       page,
       limit,
       include: postInclude,
@@ -1099,7 +1483,10 @@ export const adminService = {
   },
 
   async getBlogPost(uuid) {
-    return findByUuidOrThrow(prisma.blogPost, uuid, { includeDeleted: true, query: { include: postInclude } });
+    return findByUuidOrThrow(prisma.blogPost, uuid, {
+      includeDeleted: true,
+      query: { include: postInclude },
+    });
   },
 
   async createBlogPost(actor, body) {
@@ -1126,7 +1513,10 @@ export const adminService = {
   async deleteBlogPost(actor, uuid) {
     const current = await findByUuidOrThrow(prisma.blogPost, uuid, { includeDeleted: true });
 
-    await prisma.blogPost.update({ where: { id: current.id }, data: { deletedAt: new Date(), status: 'ARCHIVED' } });
+    await prisma.blogPost.update({
+      where: { id: current.id },
+      data: { deletedAt: new Date(), status: 'ARCHIVED' },
+    });
     return true;
   },
 
@@ -1135,7 +1525,11 @@ export const adminService = {
 
     await prisma.blogPost.update({
       where: { id: current.id },
-      data: { status, publishedAt: status === 'PUBLISHED' ? current.publishedAt || new Date() : current.publishedAt },
+      data: {
+        status,
+        publishedAt:
+          status === 'PUBLISHED' ? current.publishedAt || new Date() : current.publishedAt,
+      },
     });
     return this.getBlogPost(uuid);
   },
@@ -1153,7 +1547,10 @@ export const adminService = {
     const { page, limit, search, includeDeleted } = query;
     return listWithPagination({
       model: prisma.productBrand,
-      where: { ...(includeDeleted ? {} : { deletedAt: null }), ...buildSearchWhere(['name', 'slug', 'country', 'description'], search) },
+      where: {
+        ...(includeDeleted ? {} : { deletedAt: null }),
+        ...buildSearchWhere(['name', 'slug', 'country', 'description'], search),
+      },
       page,
       limit,
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
@@ -1161,19 +1558,35 @@ export const adminService = {
   },
 
   async createBrand(body) {
-    const slug = await buildUniqueSlug({ base: body.slug || body.name, model: prisma.productBrand });
+    const slug = await buildUniqueSlug({
+      base: body.slug || body.name,
+      model: prisma.productBrand,
+    });
     return prisma.productBrand.create({ data: { ...body, slug } });
   },
 
   async updateBrand(uuid, body) {
     const current = await findByUuidOrThrow(prisma.productBrand, uuid);
-    const slug = body.slug || body.name ? await buildUniqueSlug({ base: body.slug || body.name, model: prisma.productBrand, existingUuid: uuid }) : undefined;
-    return prisma.productBrand.update({ where: { id: current.id }, data: compactObject({ ...body, slug }) });
+    const slug =
+      body.slug || body.name
+        ? await buildUniqueSlug({
+            base: body.slug || body.name,
+            model: prisma.productBrand,
+            existingUuid: uuid,
+          })
+        : undefined;
+    return prisma.productBrand.update({
+      where: { id: current.id },
+      data: compactObject({ ...body, slug }),
+    });
   },
 
   async deleteBrand(uuid) {
     const current = await findByUuidOrThrow(prisma.productBrand, uuid);
-    await prisma.productBrand.update({ where: { id: current.id }, data: { deletedAt: new Date() } });
+    await prisma.productBrand.update({
+      where: { id: current.id },
+      data: { deletedAt: new Date() },
+    });
     return true;
   },
 
@@ -1181,7 +1594,10 @@ export const adminService = {
     const { page, limit, search, includeDeleted } = query;
     return listWithPagination({
       model: prisma.productCollection,
-      where: { ...(includeDeleted ? {} : { deletedAt: null }), ...buildSearchWhere(['name', 'slug', 'description'], search) },
+      where: {
+        ...(includeDeleted ? {} : { deletedAt: null }),
+        ...buildSearchWhere(['name', 'slug', 'description'], search),
+      },
       page,
       limit,
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
@@ -1203,45 +1619,96 @@ export const adminService = {
   },
 
   async createCollection(body) {
-    const slug = await buildUniqueSlug({ base: body.slug || body.name, model: prisma.productCollection });
+    const slug = await buildUniqueSlug({
+      base: body.slug || body.name,
+      model: prisma.productCollection,
+    });
     return prisma.productCollection.create({ data: { ...body, slug } });
   },
 
   async updateCollection(uuid, body) {
     const current = await findByUuidOrThrow(prisma.productCollection, uuid);
-    const slug = body.slug || body.name ? await buildUniqueSlug({ base: body.slug || body.name, model: prisma.productCollection, existingUuid: uuid }) : undefined;
-    return prisma.productCollection.update({ where: { id: current.id }, data: compactObject({ ...body, slug }) });
+    const slug =
+      body.slug || body.name
+        ? await buildUniqueSlug({
+            base: body.slug || body.name,
+            model: prisma.productCollection,
+            existingUuid: uuid,
+          })
+        : undefined;
+    return prisma.productCollection.update({
+      where: { id: current.id },
+      data: compactObject({ ...body, slug }),
+    });
   },
 
   async setCollectionProducts(uuid, items) {
     const collection = await findByUuidOrThrow(prisma.productCollection, uuid);
     const uuids = items.map((item) => item.productUuid);
-    if (new Set(uuids).size !== uuids.length) throw ApiError.unprocessable('Một sản phẩm chỉ được xuất hiện một lần trong collection.');
-    const products = uuids.length ? await prisma.product.findMany({ where: { uuid: { in: uuids }, deletedAt: null }, select: { id: true, uuid: true } }) : [];
-    if (products.length !== uuids.length) throw ApiError.unprocessable('Một hoặc nhiều sản phẩm không còn tồn tại.');
+    if (new Set(uuids).size !== uuids.length)
+      throw ApiError.unprocessable('Một sản phẩm chỉ được xuất hiện một lần trong collection.');
+    const products = uuids.length
+      ? await prisma.product.findMany({
+          where: { uuid: { in: uuids }, deletedAt: null },
+          select: { id: true, uuid: true },
+        })
+      : [];
+    if (products.length !== uuids.length)
+      throw ApiError.unprocessable('Một hoặc nhiều sản phẩm không còn tồn tại.');
     const idByUuid = new Map(products.map((product) => [product.uuid, product.id]));
     await prisma.$transaction(async (tx) => {
       await tx.productCollectionItem.deleteMany({ where: { collectionId: collection.id } });
-      if (items.length) await tx.productCollectionItem.createMany({
-        data: items.map((item) => ({ collectionId: collection.id, productId: idByUuid.get(item.productUuid), sortOrder: item.sortOrder })),
-      });
+      if (items.length)
+        await tx.productCollectionItem.createMany({
+          data: items.map((item) => ({
+            collectionId: collection.id,
+            productId: idByUuid.get(item.productUuid),
+            sortOrder: item.sortOrder,
+          })),
+        });
     });
     return this.getCollection(uuid);
   },
 
   async deleteCollection(uuid) {
     const current = await findByUuidOrThrow(prisma.productCollection, uuid);
-    await prisma.productCollection.update({ where: { id: current.id }, data: { deletedAt: new Date() } });
+    await prisma.productCollection.update({
+      where: { id: current.id },
+      data: { deletedAt: new Date() },
+    });
     return true;
   },
 
   async listProducts(query) {
-    const { page, limit, search, status, includeDeleted, categoryUuid, brandUuid, deleted = 'active' } = query;
-    const categoryId = categoryUuid ? await getIdByUuid(prisma.productCategory, categoryUuid, 'category') : undefined;
-    const brandId = brandUuid ? await getIdByUuid(prisma.productBrand, brandUuid, 'brand') : undefined;
+    const {
+      page,
+      limit,
+      search,
+      status,
+      includeDeleted,
+      categoryUuid,
+      brandUuid,
+      deleted = 'active',
+    } = query;
+    const categoryId = categoryUuid
+      ? await getIdByUuid(prisma.productCategory, categoryUuid, 'category')
+      : undefined;
+    const brandId = brandUuid
+      ? await getIdByUuid(prisma.productBrand, brandUuid, 'brand')
+      : undefined;
     return listWithPagination({
       model: prisma.product,
-      where: { ...((includeDeleted || deleted === 'all') ? {} : deleted === 'trashed' ? { deletedAt: { not: null } } : { deletedAt: null }), ...(status ? { status } : {}), ...(categoryId ? { categoryId } : {}), ...(brandId ? { brandId } : {}), ...buildSearchWhere(['name', 'slug', 'sku', 'shortDescription'], search) },
+      where: {
+        ...(includeDeleted || deleted === 'all'
+          ? {}
+          : deleted === 'trashed'
+            ? { deletedAt: { not: null } }
+            : { deletedAt: null }),
+        ...(status ? { status } : {}),
+        ...(categoryId ? { categoryId } : {}),
+        ...(brandId ? { brandId } : {}),
+        ...buildSearchWhere(['name', 'slug', 'sku', 'shortDescription'], search),
+      },
       page,
       limit,
       include: productInclude,
@@ -1249,7 +1716,10 @@ export const adminService = {
   },
 
   async getProduct(uuid) {
-    return findByUuidOrThrow(prisma.product, uuid, { includeDeleted: true, query: { include: productInclude } });
+    return findByUuidOrThrow(prisma.product, uuid, {
+      includeDeleted: true,
+      query: { include: productInclude },
+    });
   },
 
   async createProduct(body) {
@@ -1276,25 +1746,41 @@ export const adminService = {
 
   async deleteProduct(uuid) {
     const current = await findByUuidOrThrow(prisma.product, uuid, { includeDeleted: true });
-    await prisma.product.update({ where: { id: current.id }, data: { deletedAt: new Date(), status: 'ARCHIVED' } });
+    await prisma.product.update({
+      where: { id: current.id },
+      data: { deletedAt: new Date(), status: 'ARCHIVED' },
+    });
     return true;
   },
 
   async archiveProductsBulk(uuids) {
-    const result = await prisma.product.updateMany({ where: { uuid: { in: uuids }, deletedAt: null }, data: { deletedAt: new Date(), status: 'ARCHIVED', isFeatured: false } });
+    const result = await prisma.product.updateMany({
+      where: { uuid: { in: uuids }, deletedAt: null },
+      data: { deletedAt: new Date(), status: 'ARCHIVED', isFeatured: false },
+    });
     return { archivedCount: result.count };
   },
 
   async restoreProductsBulk(uuids) {
-    const result = await prisma.product.updateMany({ where: { uuid: { in: uuids }, deletedAt: { not: null } }, data: { deletedAt: null, status: 'INACTIVE', isFeatured: false } });
+    const result = await prisma.product.updateMany({
+      where: { uuid: { in: uuids }, deletedAt: { not: null } },
+      data: { deletedAt: null, status: 'INACTIVE', isFeatured: false },
+    });
     return { restoredCount: result.count };
   },
 
   async permanentlyDeleteProductsBulk(uuids) {
-    const products = await prisma.product.findMany({ where: { uuid: { in: uuids } }, select: { id: true, uuid: true, deletedAt: true } });
-    if (products.length !== uuids.length) throw ApiError.notFound('Một hoặc nhiều sản phẩm không tồn tại.');
-    if (products.some((product) => !product.deletedAt)) throw ApiError.unprocessable('Chỉ có thể xóa vĩnh viễn sản phẩm đã nằm trong thùng rác.');
-    const result = await prisma.product.deleteMany({ where: { id: { in: products.map((product) => product.id) }, deletedAt: { not: null } } });
+    const products = await prisma.product.findMany({
+      where: { uuid: { in: uuids } },
+      select: { id: true, uuid: true, deletedAt: true },
+    });
+    if (products.length !== uuids.length)
+      throw ApiError.notFound('Một hoặc nhiều sản phẩm không tồn tại.');
+    if (products.some((product) => !product.deletedAt))
+      throw ApiError.unprocessable('Chỉ có thể xóa vĩnh viễn sản phẩm đã nằm trong thùng rác.');
+    const result = await prisma.product.deleteMany({
+      where: { id: { in: products.map((product) => product.id) }, deletedAt: { not: null } },
+    });
     return { deletedCount: result.count, quoteSnapshotsPreserved: true };
   },
 
@@ -1302,7 +1788,10 @@ export const adminService = {
     const current = await findByUuidOrThrow(prisma.product, uuid, { includeDeleted: true });
     await prisma.product.update({
       where: { id: current.id },
-      data: { status, publishedAt: status === 'ACTIVE' ? current.publishedAt || new Date() : current.publishedAt },
+      data: {
+        status,
+        publishedAt: status === 'ACTIVE' ? current.publishedAt || new Date() : current.publishedAt,
+      },
     });
     return this.getProduct(uuid);
   },
@@ -1317,8 +1806,10 @@ export const adminService = {
   },
 
   async listMedia(query) {
-    const { page, limit, search, includeDeleted, provider, mimeType, uploaderUuid, from, to } = query;
-    const createdAt = from || to ? { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } : undefined;
+    const { page, limit, search, includeDeleted, provider, mimeType, uploaderUuid, from, to } =
+      query;
+    const createdAt =
+      from || to ? { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } : undefined;
     return listWithPagination({
       model: prisma.mediaAsset,
       where: {
@@ -1345,7 +1836,8 @@ export const adminService = {
           folder: 'midi-cosmetics',
           resource_type: 'image',
         });
-        if (!result?.public_id || !result?.secure_url) throw new Error('Cloudinary response is incomplete');
+        if (!result?.public_id || !result?.secure_url)
+          throw new Error('Cloudinary response is incomplete');
         media = {
           provider: 'CLOUDINARY',
           publicId: result.public_id,
@@ -1416,10 +1908,13 @@ export const adminService = {
 
   async deleteMedia(uuid) {
     const current = await findByUuidOrThrow(prisma.mediaAsset, uuid, { includeDeleted: true });
-    const usageCount = await prisma.productImage.count({ where: { mediaAssetId: current.id } })
-      + await prisma.blogPost.count({ where: { featuredImageId: current.id, deletedAt: null } });
+    const usageCount =
+      (await prisma.productImage.count({ where: { mediaAssetId: current.id } })) +
+      (await prisma.blogPost.count({ where: { featuredImageId: current.id, deletedAt: null } }));
     if (usageCount > 0) {
-      throw ApiError.conflict(`Ảnh đang được sử dụng tại ${usageCount} vị trí. Hãy gỡ ảnh khỏi nội dung trước khi xóa.`);
+      throw ApiError.conflict(
+        `Ảnh đang được sử dụng tại ${usageCount} vị trí. Hãy gỡ ảnh khỏi nội dung trước khi xóa.`,
+      );
     }
     if (current.provider === 'CLOUDINARY' && current.publicId && shouldUploadToCloudinary()) {
       await cloudinary.uploader.destroy(current.publicId).catch(() => null);
@@ -1474,17 +1969,19 @@ export const adminService = {
 
       return buildPreviewPayload(job, parsed);
     } catch (error) {
-      await prisma.importJob.update({
-        where: { id: job.id },
-        data: {
-          status: 'FAILED',
-          totalRows: 0,
-          successRows: 0,
-          failedRows: 0,
-          errorReport: [{ row: null, code: 'PREVIEW_FAILED', message: error.message }],
-          completedAt: new Date(),
-        },
-      }).catch(() => null);
+      await prisma.importJob
+        .update({
+          where: { id: job.id },
+          data: {
+            status: 'FAILED',
+            totalRows: 0,
+            successRows: 0,
+            failedRows: 0,
+            errorReport: [{ row: null, code: 'PREVIEW_FAILED', message: error.message }],
+            completedAt: new Date(),
+          },
+        })
+        .catch(() => null);
       await fs.unlink(file.path).catch(() => null);
       throw error;
     }
@@ -1503,7 +2000,10 @@ export const adminService = {
     const filePath = importFilePathFromJob(job);
     if (!filePath) throw ApiError.badRequest('Import file path is missing');
 
-    await prisma.importJob.update({ where: { id: job.id }, data: { status: 'PROCESSING', startedAt: new Date() } });
+    await prisma.importJob.update({
+      where: { id: job.id },
+      data: { status: 'PROCESSING', startedAt: new Date() },
+    });
 
     try {
       await fs.access(filePath);
@@ -1523,7 +2023,14 @@ export const adminService = {
         if (row.errors.length) {
           failedRows += 1;
           skippedRows += 1;
-          rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'SKIPPED', action: row.action, errors: row.errors, warnings: row.warnings });
+          rowReports.push({
+            row: row.rowNumber,
+            sku: row.sku,
+            status: 'SKIPPED',
+            action: row.action,
+            errors: row.errors,
+            warnings: row.warnings,
+          });
           continue;
         }
 
@@ -1532,22 +2039,43 @@ export const adminService = {
             const result = await upsertProductFromImportRow(tx, row);
             await tx.importRow.update({
               where: { importJobId_rowNumber: { importJobId: job.id, rowNumber: row.rowNumber } },
-              data: { status: 'SUCCESS', message: 'Imported successfully', warnings: row.warnings, errors: [] },
+              data: {
+                status: 'SUCCESS',
+                message: 'Imported successfully',
+                warnings: row.warnings,
+                errors: [],
+              },
             });
             return result;
           });
           if (importResult.operation === 'CREATED') createdProducts += 1;
           if (importResult.operation === 'UPDATED') updatedProducts += 1;
           successRows += 1;
-          rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'SUCCESS', action: row.action, warnings: row.warnings, errors: [] });
+          rowReports.push({
+            row: row.rowNumber,
+            sku: row.sku,
+            status: 'SUCCESS',
+            action: row.action,
+            warnings: row.warnings,
+            errors: [],
+          });
         } catch (error) {
           failedRows += 1;
           const errors = [{ field: null, code: 'IMPORT_FAILED', message: error.message }];
-          await prisma.importRow.update({
-            where: { importJobId_rowNumber: { importJobId: job.id, rowNumber: row.rowNumber } },
-            data: { status: 'FAILED', message: error.message, warnings: row.warnings, errors },
-          }).catch(() => null);
-          rowReports.push({ row: row.rowNumber, sku: row.sku, status: 'FAILED', action: row.action, warnings: row.warnings, errors });
+          await prisma.importRow
+            .update({
+              where: { importJobId_rowNumber: { importJobId: job.id, rowNumber: row.rowNumber } },
+              data: { status: 'FAILED', message: error.message, warnings: row.warnings, errors },
+            })
+            .catch(() => null);
+          rowReports.push({
+            row: row.rowNumber,
+            sku: row.sku,
+            status: 'FAILED',
+            action: row.action,
+            warnings: row.warnings,
+            errors,
+          });
         }
       }
 
@@ -1566,7 +2094,17 @@ export const adminService = {
       });
 
       await fs.unlink(filePath).catch(() => null);
-      return { ...updatedJob, summary: { createdCount: createdProducts, updatedCount: updatedProducts, skippedCount: skippedRows, failedCount: failedRows - skippedRows, createdProducts, updatedProducts } };
+      return {
+        ...updatedJob,
+        summary: {
+          createdCount: createdProducts,
+          updatedCount: updatedProducts,
+          skippedCount: skippedRows,
+          failedCount: failedRows - skippedRows,
+          createdProducts,
+          updatedProducts,
+        },
+      };
     } catch (error) {
       return prisma.importJob.update({
         where: { id: job.id },

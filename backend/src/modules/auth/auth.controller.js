@@ -3,7 +3,8 @@ import { asyncHandler } from '../../utils/async-handler.js';
 import { env } from '../../config/env.js';
 import { authService } from './auth.service.js';
 
-const getIpAddress = (req) => req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || null;
+const getIpAddress = (req) =>
+  req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || null;
 const refreshCookieName = env.isProduction ? '__Secure-midi_refresh_token' : 'midi_refresh_token';
 const refreshCookieOptions = {
   httpOnly: true,
@@ -13,8 +14,10 @@ const refreshCookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 const setRefreshCookie = (res, token) => res.cookie(refreshCookieName, token, refreshCookieOptions);
-const clearRefreshCookie = (res) => res.clearCookie(refreshCookieName, { ...refreshCookieOptions, maxAge: undefined });
-const readRefreshToken = (req) => req.validated?.body?.refreshToken || req.cookies?.[refreshCookieName];
+const clearRefreshCookie = (res) =>
+  res.clearCookie(refreshCookieName, { ...refreshCookieOptions, maxAge: undefined });
+const readRefreshToken = (req) =>
+  req.validated?.body?.refreshToken || req.cookies?.[refreshCookieName];
 const stripRefreshToken = (result) => ({
   ...result,
   tokens: {
@@ -33,14 +36,26 @@ export const authController = {
       ipAddress: getIpAddress(req),
     });
     setRefreshCookie(res, result.tokens.refreshToken);
-    return res.success({ statusCode: HTTP_STATUS.OK, message: 'Login successful', data: stripRefreshToken(result) });
+    return res.success({
+      statusCode: HTTP_STATUS.OK,
+      message: 'Login successful',
+      data: stripRefreshToken(result),
+    });
   }),
 
   refresh: asyncHandler(async (req, res) => {
     const refreshToken = readRefreshToken(req);
-    const result = await authService.refresh({ refreshToken, userAgent: req.headers['user-agent'] || null, ipAddress: getIpAddress(req) });
+    const result = await authService.refresh({
+      refreshToken,
+      userAgent: req.headers['user-agent'] || null,
+      ipAddress: getIpAddress(req),
+    });
     setRefreshCookie(res, result.tokens.refreshToken);
-    return res.success({ statusCode: HTTP_STATUS.OK, message: 'Token refreshed successfully', data: stripRefreshToken(result) });
+    return res.success({
+      statusCode: HTTP_STATUS.OK,
+      message: 'Token refreshed successfully',
+      data: stripRefreshToken(result),
+    });
   }),
 
   logout: asyncHandler(async (req, res) => {
@@ -50,5 +65,11 @@ export const authController = {
     return res.success({ statusCode: HTTP_STATUS.OK, message: 'Logout successful', data: {} });
   }),
 
-  me: asyncHandler(async (req, res) => res.success({ statusCode: HTTP_STATUS.OK, message: 'Authenticated user fetched successfully', data: { user: req.user } })),
+  me: asyncHandler(async (req, res) =>
+    res.success({
+      statusCode: HTTP_STATUS.OK,
+      message: 'Authenticated user fetched successfully',
+      data: { user: req.user },
+    }),
+  ),
 };

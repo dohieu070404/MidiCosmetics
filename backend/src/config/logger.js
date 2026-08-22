@@ -43,18 +43,20 @@ const loggerOptions = {
     ],
     censor: '[REDACTED]',
   },
-  ...(env.isProduction ? {
-    serializers: {
-      err(error) {
-        return {
-          type: error?.name || 'Error',
-          code: error?.code || undefined,
-          statusCode: error?.statusCode || undefined,
-          message: '[REDACTED_IN_PRODUCTION]',
-        };
-      },
-    },
-  } : {}),
+  ...(env.isProduction
+    ? {
+        serializers: {
+          err(error) {
+            return {
+              type: error?.name || 'Error',
+              code: error?.code || undefined,
+              statusCode: error?.statusCode || undefined,
+              message: '[REDACTED_IN_PRODUCTION]',
+            };
+          },
+        },
+      }
+    : {}),
 };
 
 // IMPORTANT:
