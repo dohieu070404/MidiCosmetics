@@ -22,7 +22,7 @@ jobs:
       DIRECT_URL: postgresql://audit:audit@127.0.0.1:5432/audit?schema=public
     steps:
       - name: Checkout complete history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
